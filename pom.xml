@@ -42,6 +42,35 @@
     </properties>
 
     <dependencies>
+
+
+            <!-- Bot Framework -->
+        <dependency>
+            <groupId>com.microsoft.bot</groupId>
+            <artifactId>bot-integration-core</artifactId>
+            <version>4.14.1</version>
+        </dependency>
+
+
+
+        <dependency>
+            <groupId>com.microsoft.bot</groupId>
+            <artifactId>bot-schema</artifactId>
+            <version>4.14.1</version>
+        </dependency>
+
+            <dependency>
+                <groupId>com.microsoft.bot</groupId>
+                <artifactId>bot-integration-spring</artifactId>
+                <version>4.14.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.microsoft.bot</groupId>
+                <artifactId>bot-schema</artifactId>
+                <version>4.14.1</version>
+            </dependency>
+
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>

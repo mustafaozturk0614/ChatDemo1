@@ -3,15 +3,17 @@
 
 package com.example.chat;
 
-import com.codepoetics.protonpack.collectors.CompletableFutures;
+import com.example.chat.dialogs.DialogBot;
 import com.microsoft.bot.builder.ActivityHandler;
-import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.builder.TurnContext;
 import com.microsoft.bot.schema.ChannelAccount;
-import com.microsoft.bot.schema.ResourceResponse;
-import org.apache.commons.lang3.StringUtils;
+import com.example.chat.dialogs.MainDialog;
+import com.example.chat.dialogs.Dialog;
+import com.example.chat.dialogs.DialogHelper;
+import com.microsoft.bot.builder.ConversationState;
+import com.microsoft.bot.builder.UserState;
 
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -23,115 +25,24 @@ import java.util.concurrent.CompletableFuture;
  * #onMembersAdded(List, TurnContext)} will send a greeting to new conversation participants.
  * </p>
  */
-public class EchoBot extends ActivityHandler {
-    // Menü seçenekleri için enum
-    private enum MenuOption {
-        FATURA_ISLEMLERI("Fatura İşlemleri"),
-        ABONELIK_ISLEMLERI("Abonelik İşlemleri"),
-        TUKETIM_BILGILERI("Tüketim Bilgileri"),
-        TALEP_SIKAYET("Talep/Şikayet"),
-        ANA_MENU("Ana Menü");
-
-        private final String displayText;
-
-        MenuOption(String displayText) {
-            this.displayText = displayText;
-        }
-
-        public String getDisplayText() {
-            return displayText;
-        }
-    }
-
-    // Alt menü seçenekleri için enum
-    private enum FaturaOption {
-        FATURA_SORGULA("Fatura Sorgula"),
-        FATURA_ODE("Fatura Öde"),
-        SON_ODEME("Son Ödeme Tarihi"),
-        GERI("Ana Menüye Dön");
-
-        private final String displayText;
-
-        FaturaOption(String displayText) {
-            this.displayText = displayText;
-        }
-
-        public String getDisplayText() {
-            return displayText;
-        }
+public class EchoBot extends DialogBot<MainDialog> {
+    public EchoBot(ConversationState conversationState, UserState userState, MainDialog dialog) {
+        super(conversationState, userState, dialog);
     }
 
     @Override
     protected CompletableFuture<Void> onMessageActivity(TurnContext turnContext) {
-        String text = turnContext.getActivity().getText().toLowerCase();
-
-        if (text.contains("fatura")) {
-            return sendFaturaMenu(turnContext);
-        } else if (text.contains("abonelik")) {
-            return sendAbonelikMenu(turnContext);
-        } else if (text.contains("ana menü") || text.contains("geri")) {
-            return sendMainMenu(turnContext).thenApply(response -> null);
-        } else {
-            return sendMainMenu(turnContext).thenApply(response -> null);
-        }
-    }
-
-    private CompletableFuture<ResourceResponse> sendMainMenu(TurnContext turnContext) {
-        List<String> actions = new ArrayList<>();
-        for (MenuOption option : MenuOption.values()) {
-            if (option != MenuOption.ANA_MENU) {
-                String displayText = option.getDisplayText();
-                actions.add(displayText);
-            }
-        }
-
-        return turnContext.sendActivity(
-                MessageFactory.suggestedActions(
-                        actions,
-                        "Lütfen yapmak istediğiniz işlemi seçin:"
-                )
-        );
-    }
-
-    private CompletableFuture<Void> sendFaturaMenu(TurnContext turnContext) {
-        List<String> actions = new ArrayList<>();
-        for (FaturaOption faturaOption : FaturaOption.values()) {
-            String displayText = faturaOption.getDisplayText();
-            actions.add(displayText);
-        }
-
-        return turnContext.sendActivity(
-                MessageFactory.suggestedActions(
-                        actions,
-                        "Fatura işlemleri için seçim yapın:"
-                )
-        ).thenApply(response -> null);
-    }
-
-    private CompletableFuture<Void> sendAbonelikMenu(TurnContext turnContext) {
-        List<String> actions = Arrays.asList(
-                "Yeni Abonelik",
-                "Abonelik İptali",
-                "Abonelik Durumu",
-                MenuOption.ANA_MENU.getDisplayText()
-        );
-
-        return turnContext.sendActivity(
-                MessageFactory.suggestedActions(
-                        actions,
-                        "Abonelik işlemleri için seçim yapın:"
-                )
-        ).thenApply(response -> null);
+        return DialogHelper.run(dialog, turnContext, 
+            conversationState.createProperty("DialogState"));
     }
 
     @Override
     protected CompletableFuture<Void> onMembersAdded(List<ChannelAccount> membersAdded, TurnContext turnContext) {
         return membersAdded.stream()
-                .filter(member -> !member.getId().equals(turnContext.getActivity().getRecipient().getId()))
-                .map(channel -> turnContext.sendActivity(
-                        MessageFactory.text("Merhaba! Ben CK Enerji botuyum. Size nasıl yardımcı olabilirim?")))
-                .collect(CompletableFutures.toFutureList())
-                .thenCompose(resourceResponses -> sendMainMenu(turnContext))
-                .thenApply(response -> null);
+            .filter(member -> !member.getId().equals(turnContext.getActivity().getRecipient().getId()))
+            .findFirst()
+            .map(member -> DialogHelper.run(dialog, turnContext, 
+                conversationState.createProperty("DialogState")))
+            .orElse(CompletableFuture.completedFuture(null));
     }
 }

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="bot">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../botbuilder-java-main/out/artifacts/bot/bot.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -3,16 +3,21 @@
 
 package com.example.chat;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+
 import com.microsoft.bot.builder.Bot;
+import com.microsoft.bot.builder.ConversationState;
+import com.microsoft.bot.builder.MemoryStorage;
+import com.microsoft.bot.builder.Storage;
+import com.microsoft.bot.builder.UserState;
 import com.microsoft.bot.integration.AdapterWithErrorHandler;
 import com.microsoft.bot.integration.BotFrameworkHttpAdapter;
 import com.microsoft.bot.integration.Configuration;
 import com.microsoft.bot.integration.spring.BotController;
 import com.microsoft.bot.integration.spring.BotDependencyConfiguration;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 
 //
 // This is the starting point of the Sprint Boot Bot application.
@@ -37,6 +42,21 @@ public class Application extends BotDependencyConfiguration {
         SpringApplication.run(Application.class, args);
     }
 
+    @Bean
+    public UserState userState(Storage storage) {
+        return new UserState(storage);
+    }
+
+    @Bean
+    public ConversationState conversationState(Storage storage) {
+        return new ConversationState(storage);
+    }
+
+    @Bean
+    public Storage storage() {
+        return new MemoryStorage();
+    }
+
     /**
      * Returns the Bot for this application.
      *
@@ -48,8 +68,8 @@ public class Application extends BotDependencyConfiguration {
      * @return The Bot implementation for this application.
      */
     @Bean
-    public Bot getBot() {
-        return new EchoBot();
+    public Bot getBot(ConversationState conversationState, UserState userState) {
+        return new EchoBot(conversationState, userState);
     }
 
     /**

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 
+import com.example.chat.service.LuisService;
 import com.microsoft.bot.builder.Bot;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MemoryStorage;
@@ -70,8 +71,8 @@ public class Application extends BotDependencyConfiguration {
      * @return The Bot implementation for this application.
      */
     @Bean
-    public Bot getBot(ConversationState conversationState, UserState userState) {
-        return new EchoBot(conversationState, userState);
+    public Bot getBot(ConversationState conversationState, UserState userState, LuisService luisService) {
+        return new EchoBot(conversationState, userState, luisService);
     }
 
     /**

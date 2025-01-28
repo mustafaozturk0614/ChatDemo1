@@ -91,6 +91,12 @@
         <artifactId>bot-dialogs</artifactId>
         <version>${bot.builder.version}</version>
       </dependency>
+
+      <!-- Jackson JSR310 support for Java 8 date/time types -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jsr310</artifactId>
+      </dependency>
     </dependencies>
 
   <repositories>

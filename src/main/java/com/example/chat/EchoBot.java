@@ -12,7 +12,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import com.example.chat.model.LuisResponse;
+import com.example.chat.service.LuisService;
 import com.microsoft.bot.builder.ActivityHandler;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MessageFactory;
@@ -23,7 +26,6 @@ import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogSet;
 import com.microsoft.bot.dialogs.DialogState;
 import com.microsoft.bot.dialogs.DialogTurnResult;
-import com.microsoft.bot.dialogs.DialogTurnStatus;
 import com.microsoft.bot.dialogs.WaterfallDialog;
 import com.microsoft.bot.dialogs.WaterfallStep;
 import com.microsoft.bot.dialogs.WaterfallStepContext;
@@ -56,9 +58,13 @@ public class EchoBot extends ActivityHandler {
     private UserState userState;
     private static final String DEFAULT_USER = "Değerli Müşterimiz";
     
-    public EchoBot(ConversationState withConversationState, UserState withUserState) {
+    @Autowired
+    private LuisService luisService;
+    
+    public EchoBot(ConversationState withConversationState, UserState withUserState, LuisService luisService) {
         conversationState = withConversationState;
         userState = withUserState;
+        this.luisService = luisService;
         
         StatePropertyAccessor<DialogState> dialogStateAccessor = 
             conversationState.createProperty("DialogState");
@@ -356,28 +362,66 @@ public class EchoBot extends ActivityHandler {
     @Override
     protected CompletableFuture<Void> onMessageActivity(TurnContext turnContext) {
         try {
-            DialogContext dialogContext = dialogs.createContext(turnContext).join();
+            String userMessage = turnContext.getActivity().getText();
             
-            return dialogContext.continueDialog()
-                .thenCompose(dialogTurnResult -> {
-                    if (dialogTurnResult.getStatus() == DialogTurnStatus.EMPTY ||
-                        dialogTurnResult.getStatus() == DialogTurnStatus.COMPLETE) {
-                        return dialogContext.beginDialog("menuDialog");
-                    }
-                    return CompletableFuture.completedFuture(dialogTurnResult);
-                })
-                .thenCompose(result -> conversationState.saveChanges(turnContext))
-                .thenCompose(result -> userState.saveChanges(turnContext))
-                .exceptionally(ex -> {
-                    turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Ana menüye yönlendiriliyorsunuz...")).join();
-                    dialogContext.beginDialog("menuDialog").join();
-                    return null;
-                });
-                
+            // LUIS'e istek at ve yanıtı al
+            LuisResponse luisResponse = luisService.analyzeText(userMessage);
+            System.out.println("luisResponse: " + luisResponse);
+            String topIntent = luisResponse.getResult().getPrediction().getTopIntent();
+            
+            DialogContext dialogContext = dialogs.createContext(turnContext).join();
+            System.out.println("intent: " + topIntent);
+            // Intent'e göre işlem yap
+            switch (topIntent) {
+                case "LastUnpaidBillIntent":
+                    return handleLastUnpaidBill(turnContext, dialogContext);
+                    
+                case "AllUnpaidBillsIntent":
+                    return handleAllUnpaidBills(turnContext, dialogContext);
+                    
+                case "PaidBillsIntent":
+                    return handlePaidBills(turnContext, dialogContext);
+                    
+                case "SupportRequestIntent":
+                    return dialogContext.beginDialog("talepDialog")
+                        .thenCompose(result -> CompletableFuture.completedFuture(null));
+                    
+                case "None":
+                default:
+                    return dialogContext.beginDialog("menuDialog")
+                        .thenCompose(result -> CompletableFuture.completedFuture(null));
+            }
+            
         } catch (Exception ex) {
-            turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin.")).join();
-            return CompletableFuture.completedFuture(null);
+            return turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Ana menüye yönlendiriliyorsunuz..."))
+                .thenCompose(result -> {
+                    DialogContext dialogContext = dialogs.createContext(turnContext).join();
+                    return dialogContext.beginDialog("menuDialog");
+                })
+                .thenCompose(result -> CompletableFuture.completedFuture(null));
         }
+    }
+    
+    private CompletableFuture<Void> handleLastUnpaidBill(TurnContext turnContext, DialogContext dialogContext) {
+        Activity response = MessageFactory.attachment(createFaturaCard(12345));
+        return turnContext.sendActivity(response)
+            .thenCompose(result -> CompletableFuture.completedFuture(null));
+    }
+    
+    private CompletableFuture<Void> handleAllUnpaidBills(TurnContext turnContext, DialogContext dialogContext) {
+        // Tüm ödenmemiş faturaları göster
+        String message = "Ödenmemiş Faturalarınız:\n\n" +
+            "1. Mart 2024 - 856,75 TL (Son Ödeme: 25.03.2024)\n" +
+            "2. Şubat 2024 - 789,50 TL (Son Ödeme: 25.02.2024)\n";
+        
+        return turnContext.sendActivity(MessageFactory.text(message))
+            .thenCompose(result -> CompletableFuture.completedFuture(null));
+    }
+    
+    private CompletableFuture<Void> handlePaidBills(TurnContext turnContext, DialogContext dialogContext) {
+        Activity response = MessageFactory.attachment(createGecmisFaturalarCard());
+        return turnContext.sendActivity(response)
+            .thenCompose(result -> CompletableFuture.completedFuture(null));
     }
 
     private Attachment createGecmisFaturalarCard() {

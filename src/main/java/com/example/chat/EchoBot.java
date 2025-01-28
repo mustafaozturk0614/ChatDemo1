@@ -95,6 +95,14 @@ public class EchoBot extends ActivityHandler {
         dialogs.add(new ChoicePrompt("faturaPrompt"));
         dialogs.add(new TextPrompt("detayPrompt"));
         dialogs.add(new ConfirmPrompt("confirmPrompt"));
+
+        // Move the new dialog and prompt definitions into the constructor
+        WaterfallStep[] faturaSorgulamaSteps = new WaterfallStep[] {
+            this::handleFaturaSorgulamaStep,
+            this::finalStep // You can add more steps if needed
+        };
+        dialogs.add(new WaterfallDialog("faturaSorgulamaDialog", Arrays.asList(faturaSorgulamaSteps)));
+        dialogs.add(new ChoicePrompt("faturaSorgulamaPrompt"));
     }
 
     private CompletableFuture<DialogTurnResult> showMenuStep(WaterfallStepContext stepContext) {
@@ -503,9 +511,7 @@ public class EchoBot extends ActivityHandler {
             String selection = choice.getValue();
             
             if (selection.equals(FaturaOption.FATURA_SORGULA.getDisplayText())) {
-                String faturaDetay = "Son Ödenmemiş Fatura:\nDönem: Mart 2024\nTutar: 856,75 TL\nSon Ödeme: 25.03.2024\nDurum: Ödenmemiş";
-                return stepContext.getContext().sendActivity(MessageFactory.text(faturaDetay))
-                    .thenCompose(result -> stepContext.endDialog());
+                return stepContext.replaceDialog("faturaSorgulamaDialog");
             } else if (selection.equals(FaturaOption.FATURA_ODE.getDisplayText())) {
                 String faturaDetay = String.format(
                     "Fatura Detayları:\nDönem: Mart 2024\nTutar: 856,75 TL\nSon Ödeme: 25.03.2024\nDurum: Ödenmemiş\n\nÖdemek ister misiniz?"
@@ -537,6 +543,51 @@ public class EchoBot extends ActivityHandler {
             return stepContext.getContext().sendActivity(MessageFactory.text("İşlem iptal edildi. Ana menüye dönülüyor..."))
                 .thenCompose(result -> stepContext.endDialog());
         }
+    }
+
+    // Add a new enum for Fatura Sorgulama Menüsü options
+    private enum FaturaSorgulamaOption {
+        SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄"),
+        TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑"),
+        ODENMIS_FATURALAR("Ödenmiş Faturalar ✅"),
+        GERI_DON("Geri Dön 🔙");
+
+        private final String displayText;
+
+        FaturaSorgulamaOption(String displayText) {
+            this.displayText = displayText;
+        }
+
+        public String getDisplayText() {
+            return displayText;
+        }
+    }
+
+    // Modify handleFaturaSorgulamaStep to include suggested actions
+    private CompletableFuture<DialogTurnResult> handleFaturaSorgulamaStep(WaterfallStepContext stepContext) {
+        List<Choice> choices = Arrays.asList(
+            new Choice(FaturaSorgulamaOption.SON_ODENMEMIS_FATURA.getDisplayText()),
+            new Choice(FaturaSorgulamaOption.TUM_ODENMEMIS_FATURALAR.getDisplayText()),
+            new Choice(FaturaSorgulamaOption.ODENMIS_FATURALAR.getDisplayText()),
+            new Choice(FaturaSorgulamaOption.GERI_DON.getDisplayText())
+        );
+
+        Activity faturaSorgulamaMessage = MessageFactory.text("Fatura sorgulama işlemleriniz için hangi seçeneği tercih edersiniz?");
+        faturaSorgulamaMessage.setSuggestedActions(new SuggestedActions() {{
+            setActions(choices.stream()
+                .map(choice -> new CardAction() {{
+                    setTitle(choice.getValue());
+                    setValue(choice.getValue());
+                    setType(ActionTypes.POST_BACK);
+                }})
+                .collect(Collectors.toList()));
+        }});
+
+        PromptOptions promptOptions = new PromptOptions();
+        promptOptions.setPrompt(faturaSorgulamaMessage);
+        promptOptions.setChoices(choices);
+
+        return stepContext.prompt("faturaSorgulamaPrompt", promptOptions);
     }
 }
 

@@ -1,0 +1,102 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+package com.example.chat;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.microsoft.bot.builder.Bot;
+import com.microsoft.bot.builder.ConversationState;
+import com.microsoft.bot.builder.MemoryStorage;
+import com.microsoft.bot.builder.Storage;
+import com.microsoft.bot.builder.UserState;
+import com.microsoft.bot.integration.AdapterWithErrorHandler;
+import com.microsoft.bot.integration.BotFrameworkHttpAdapter;
+import com.microsoft.bot.integration.Configuration;
+import com.microsoft.bot.integration.spring.BotController;
+import com.microsoft.bot.integration.spring.BotDependencyConfiguration;
+import com.example.chat.service.BotResponseService;
+
+//
+// This is the starting point of the Sprint Boot Bot application.
+//
+@SpringBootApplication(scanBasePackages = "com.example.chat")
+
+// Use the default BotController to receive incoming Channel messages. A custom
+// controller could be used by eliminating this import and creating a new
+// org.springframework.web.bind.annotation.RestController.
+// The default controller is created by the Spring Boot container using
+// dependency injection. The default route is /api/messages.
+@Import({BotController.class})
+
+/**
+ * This class extends the BotDependencyConfiguration which provides the default
+ * implementations for a Bot application.  The Application class should
+ * override methods in order to provide custom implementations.
+ */
+public class Application extends BotDependencyConfiguration {
+
+    private static final Logger logger = LoggerFactory.getLogger(Application.class);
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+        logger.info("Application started successfully.");
+    }
+
+    @Bean
+    public UserState userState(Storage storage) {
+        logger.debug("Creating UserState bean.");
+        return new UserState(storage);
+    }
+
+    @Bean
+    public ConversationState conversationState(Storage storage) {
+        logger.debug("Creating ConversationState bean.");
+        return new ConversationState(storage);
+    }
+
+    @Override
+    @Bean
+    @Primary
+    public Storage getStorage() {
+        logger.debug("Creating MemoryStorage bean.");
+        return new MemoryStorage();
+    }
+
+    /**
+     * Returns the Bot for this application.
+     *
+     * <p>
+     *     The @Component annotation could be used on the Bot class instead of this method
+     *     with the @Bean annotation.
+     * </p>
+     *
+     * @return The Bot implementation for this application.
+     */
+    @Bean
+    public Bot getBot(
+        ConversationState conversationState, 
+        UserState userState,
+        BotResponseService botResponseService) {
+        logger.debug("Creating Bot bean with dependencies.");
+        return new EchoBot(botResponseService, conversationState, userState);
+    }
+
+    /**
+     * Returns a custom Adapter that provides error handling.
+     *
+     * @param configuration The Configuration object to use.
+     * @return An error handling BotFrameworkHttpAdapter.
+     */
+    @Override
+    public BotFrameworkHttpAdapter getBotFrameworkHttpAdaptor(Configuration configuration) {
+        logger.debug("Creating BotFrameworkHttpAdapter with error handling.");
+        return new AdapterWithErrorHandler(configuration);
+    }
+}

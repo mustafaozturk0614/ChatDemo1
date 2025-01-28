@@ -7,6 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 
 import com.microsoft.bot.builder.Bot;
 import com.microsoft.bot.builder.ConversationState;
@@ -53,6 +54,7 @@ public class Application extends BotDependencyConfiguration {
     }
 
     @Bean
+    @Primary
     public Storage storage() {
         return new MemoryStorage();
     }

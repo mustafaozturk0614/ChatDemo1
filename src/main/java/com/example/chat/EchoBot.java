@@ -7,12 +7,22 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import com.example.chat.model.DialogMenuOption;
+import com.example.chat.model.DialogType;
+import com.example.chat.model.FaturaOption;
+import com.example.chat.model.FaturaSorgulamaOption;
+import com.example.chat.model.IntentMenuOption;
+import com.example.chat.model.MenuOption;
+import com.example.chat.model.MenuOptionInterface;
+import com.example.chat.model.TalepTipi;
+import com.example.chat.service.IntentService;
 import com.microsoft.bot.builder.ActivityHandler;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MessageFactory;
@@ -20,6 +30,7 @@ import com.microsoft.bot.builder.StatePropertyAccessor;
 import com.microsoft.bot.builder.TurnContext;
 import com.microsoft.bot.builder.UserState;
 import com.microsoft.bot.dialogs.DialogContext;
+import com.microsoft.bot.dialogs.DialogReason;
 import com.microsoft.bot.dialogs.DialogSet;
 import com.microsoft.bot.dialogs.DialogState;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -55,6 +66,8 @@ public class EchoBot extends ActivityHandler {
     private ConversationState conversationState;
     private UserState userState;
     private static final String DEFAULT_USER = "Değerli Müşterimiz";
+    @Autowired
+    private  IntentService intentService;
 
     public EchoBot(ConversationState withConversationState, UserState withUserState) {
         conversationState = withConversationState;
@@ -67,7 +80,6 @@ public class EchoBot extends ActivityHandler {
 
         WaterfallStep[] menuSteps = new WaterfallStep[] {
                 this::showMenuStep,
-                this::handleMenuSelectionStep,
                 this::finalStep
         };
 
@@ -127,18 +139,26 @@ public class EchoBot extends ActivityHandler {
         return stepContext.prompt("menuPrompt", promptOptions);
     }
 
-    private CompletableFuture<DialogTurnResult> handleMenuSelectionStep(WaterfallStepContext stepContext) {
-        FoundChoice choice = (FoundChoice) stepContext.getResult();
-        String selection = choice.getValue();
 
-        Optional<MenuOption> selectedOption = Arrays.stream(MenuOption.values())
-                .filter(option -> option.getDisplayText().equals(selection))
-                .findFirst();
-
-        if (selectedOption.isPresent()) {
-            return stepContext.beginDialog(selectedOption.get().getDialogId());
-        } else {
-            return stepContext.getContext().sendActivity(MessageFactory.text("Geçersiz seçenek! Lütfen tekrar deneyin."))
+    private CompletableFuture<DialogTurnResult> handleDetectedIntent(
+        WaterfallStepContext stepContext, 
+        String intent
+    ) {
+        System.out.println("Detected intent: " + intent);
+        switch (intent) {
+            case "LastUnpaidBillIntent":
+                return stepContext.getContext()
+                    .sendActivity(MessageFactory.text("Showing your last unpaid bill..."))
+                    .thenCompose(result -> stepContext.next(null));
+                
+            case "AllUnpaidBillsIntent":
+                return stepContext.getContext()
+                    .sendActivity(MessageFactory.text("Showing all your unpaid bills..."))
+                    .thenCompose(result -> stepContext.next(null));
+                
+            default:
+                return stepContext.getContext()
+                    .sendActivity(MessageFactory.text("I'm not sure what you want. Please try again."))
                     .thenCompose(result -> stepContext.endDialog());
         }
     }
@@ -366,12 +386,14 @@ public class EchoBot extends ActivityHandler {
     protected CompletableFuture<Void> onMessageActivity(TurnContext turnContext) {
         try {
             DialogContext dialogContext = dialogs.createContext(turnContext).join();
-
+            String userMessage = turnContext.getActivity().getText();
+            System.out.println("userMessage: " + userMessage);
             return dialogContext.continueDialog()
                     .thenCompose(dialogTurnResult -> {
                         if (dialogTurnResult.getStatus() == DialogTurnStatus.EMPTY ||
                                 dialogTurnResult.getStatus() == DialogTurnStatus.COMPLETE) {
-                            return dialogContext.beginDialog("menuDialog");
+                            return handleUserMessage(turnContext, userMessage);
+                          //  return dialogContext.beginDialog("menuDialog");
                         }
                         return CompletableFuture.completedFuture(dialogTurnResult);
                     })
@@ -386,6 +408,53 @@ public class EchoBot extends ActivityHandler {
         } catch (Exception ex) {
             turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin.")).join();
             return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    private CompletableFuture<DialogTurnResult> handleUserMessage(TurnContext turnContext, String userMessage) {
+        DialogContext dialogContext = dialogs.createContext(turnContext).join();
+        WaterfallStepContext stepContext = new WaterfallStepContext(
+                null, // WaterfallDialog
+                dialogContext, // DialogContext
+                null, // Object (options)
+                null, // Map<String, Object> (values)
+                0, // int (index)
+                DialogReason.BEGIN_CALLED, // DialogReason
+                null // Object (result)
+        );
+        MenuOptionInterface selectedOption = Stream.of(
+                Stream.of(MenuOption.values()),
+                Stream.of(FaturaOption.values()),
+                Stream.of(FaturaSorgulamaOption.values())
+            )
+            .flatMap(s -> s) // Tüm stream'leri birleştir
+            .filter(option -> option.getDisplayText().equals(userMessage))
+            .findFirst()
+            .orElse(null);
+
+        if (selectedOption != null) {
+          
+            if (selectedOption.getDialogType() == DialogType.MENU_DIALOG) {
+                return dialogContext.beginDialog(((DialogMenuOption) selectedOption).getDialogId());
+            } else if (selectedOption.getDialogType() == DialogType.INTENT_DIALOG) {
+                return handleDetectedIntent(stepContext, ((IntentMenuOption) selectedOption).getIntentName());
+            }
+        }
+
+        // Eğer menü seçeneği bulunamadıysa, intent'i tespit et
+        String detectedIntent = intentService.detectIntent(userMessage);
+
+        // Intent'e göre işlem yap
+        switch (detectedIntent) {
+            case "LastUnpaidBillIntent":
+                return turnContext.sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
+                        .thenCompose(result -> stepContext.next(null));
+            case "AllUnpaidBillsIntent":
+                return turnContext.sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız gösteriliyor..."))
+                        .thenCompose(result -> stepContext.next(null));
+            default:
+                return turnContext.sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))
+                        .thenCompose(result -> stepContext.endDialog());
         }
     }
 
@@ -416,118 +485,13 @@ public class EchoBot extends ActivityHandler {
 
         return card.toAttachment();
     }
-    private enum DialogType {
-        MENU_DIALOG,
-        INTENT_DIALOG,
-        
-    }
-
-    // Menü seçenekleri için enum
-    private enum MenuOption {
-        FATURA_ISLEMLERI("Fatura İşlemleri 💰","faturaDialog",DialogType.MENU_DIALOG),
-        TALEP_SIKAYET("Talep/Şikayet 📨","talepDialog",DialogType.MENU_DIALOG);
-
-        private final String displayText;
-        private final String dialogId;
-        private final DialogType dialogType;
-
-        MenuOption(String displayText, String dialogId, DialogType dialogType) {
-            this.displayText = displayText;
-            this.dialogId = dialogId;
-            this.dialogType = dialogType;
-        }
+   
 
 
-        public String getDisplayText() {
-            return displayText;
-            }
-
-        public String getDialogId() {
-            return dialogId;
-        }
-
-        public DialogType getDialogType() {
-            return dialogType;
-        }
   
 
 
-    }
-
-    // Alt menü seçenekleri için enum
-
-    private enum FaturaOption {
-        FATURA_SORGULA("Fatura Sorgula","faturaSorgulamaDialog",DialogType.MENU_DIALOG),
-        FATURA_ODE("Fatura Öde","faturaOdemeDialog",DialogType.MENU_DIALOG),
-        GERI("Ana Menü","menuDialog",DialogType.MENU_DIALOG);
-
-
-        private final String displayText;
-        private final String dialogId;
-        private final DialogType dialogType;
-
-        FaturaOption(String displayText, String dialogId, DialogType dialogType) {
-            this.displayText = displayText;
-            this.dialogId = dialogId;
-            this.dialogType = dialogType;
-        }
-
-
-        public String getDisplayText() {
-            return displayText;
-            }
-
-        public String getDialogId() {
-            return dialogId;
-        }
-
-        public DialogType getDialogType() {
-            return dialogType;
-        }
-    }
-
-    private enum TalepTipi {
-        ARIZA("Arıza Bildirimi"),
-        BAGLANTI("Yeni Bağlantı"),
-        SAYAC("Sayaç İşlemleri"),
-        GERI("Ana Menü");
-
-
-        private final String displayText;
-
-        TalepTipi(String displayText) {
-            this.displayText = displayText;
-        }
-
-        public String getDisplayText() {
-            return displayText;
-        }
-    }
-
-    private enum BillingOption {
-        SON_FATURA("📄 Son Fatura"),
-        SON_ODEME("💰 Son Ödeme"),
-        GECMIS_FATURALAR("📋 Geçmiş Faturalar");
-
-        private final String displayText;
-
-        BillingOption(String displayText) {
-            this.displayText = displayText;
-        }
-
-        public String getDisplayText() {
-            return displayText;
-        }
-
-        public static BillingOption fromDisplayText(String text) {
-            for (BillingOption option : values()) {
-                if (option.getDisplayText().equals(text)) {
-                    return option;
-                }
-            }
-            throw new IllegalArgumentException("Invalid display text: " + text);
-        }
-    }
+ 
 
     private CompletableFuture<DialogTurnResult> showFaturaOptionsStep(WaterfallStepContext stepContext) {
         List<Choice> choices = Arrays.stream(FaturaOption.values())
@@ -581,46 +545,7 @@ public class EchoBot extends ActivityHandler {
         }
     }
 
-    // Add a new enum for Fatura Sorgulama Menüsü options
-    //bu intetn diolog intent isimleri ve turu eklenecek buraya 
-    private enum FaturaSorgulamaOption {
-        SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄", "LastUnpaidBillIntent", DialogType.INTENT_DIALOG),
-        TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑", "AllUnpaidBillsIntent", DialogType.INTENT_DIALOG),
-        ODENMIS_FATURALAR("Ödenmiş Faturalar ✅", "PaidBillsIntent", DialogType.INTENT_DIALOG),
-        GERI_DON("Geri Dön 🔙", "None", DialogType.MENU_DIALOG);
 
-
-        private final String displayText;
-        private final String intentName;
-        private final DialogType dialogType;
-
-        FaturaSorgulamaOption(String displayText, String intentName, DialogType dialogType) {
-            this.displayText = displayText;
-            this.intentName = intentName;
-            this.dialogType = dialogType;
-        }
-
-        public String getDisplayText() {
-            return displayText;
-        }
-
-        public String getIntentName() {
-            return intentName;
-        }
-
-        public DialogType getDialogType() {
-            return dialogType;
-        }
-
-        public static FaturaSorgulamaOption fromIntent(String intent) {
-            for (FaturaSorgulamaOption option : values()) {
-                if (option.getIntentName().equals(intent)) {
-                    return option;
-                }
-            }
-            return GERI_DON; // Eğer intent bulunamazsa geri dön
-        }
-    }
 
     // Modify handleFaturaSorgulamaStep to include suggested actions
 
@@ -645,20 +570,5 @@ public class EchoBot extends ActivityHandler {
         promptOptions.setChoices(choices);
 
         return stepContext.prompt("faturaSorgulamaPrompt", promptOptions);
-    }
-
-    private CompletableFuture<DialogTurnResult> handleIntent(WaterfallStepContext stepContext, String intent) {
-        // Intent'e göre işlem yap
-        switch (intent) {
-            case "LastUnpaidBillIntent":
-                return stepContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
-                        .thenCompose(result -> stepContext.next(null));
-            case "AllUnpaidBillsIntent":
-                return stepContext.getContext().sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız listeleniyor..."))
-                        .thenCompose(result -> stepContext.next(null));
-
-            default:
-                return stepContext.endDialog();
-        }
     }
 }

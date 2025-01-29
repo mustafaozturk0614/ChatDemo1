@@ -648,22 +648,15 @@ public class EchoBot extends ActivityHandler {
     }
 
     private CompletableFuture<DialogTurnResult> handleIntent(WaterfallStepContext stepContext, String intent) {
-        FaturaSorgulamaOption selectedOption = FaturaSorgulamaOption.fromIntent(intent);
-
-        switch (selectedOption) {
-            case SON_ODENMEMIS_FATURA:
+        // Intent'e göre işlem yap
+        switch (intent) {
+            case "LastUnpaidBillIntent":
                 return stepContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
                         .thenCompose(result -> stepContext.next(null));
-            case TUM_ODENMEMIS_FATURALAR:
-
+            case "AllUnpaidBillsIntent":
                 return stepContext.getContext().sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız listeleniyor..."))
                         .thenCompose(result -> stepContext.next(null));
-            case ODENMIS_FATURALAR:
-                return stepContext.getContext().sendActivity(MessageFactory.text("Ödenmiş faturalarınız gösteriliyor..."))
-                        .thenCompose(result -> stepContext.next(null));
 
-            case GERI_DON:
-                return stepContext.beginDialog("menuDialog");
             default:
                 return stepContext.endDialog();
         }

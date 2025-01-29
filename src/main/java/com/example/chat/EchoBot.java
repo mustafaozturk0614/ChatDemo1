@@ -4,10 +4,10 @@
 package com.example.chat;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -106,11 +106,9 @@ public class EchoBot extends ActivityHandler {
     }
 
     private CompletableFuture<DialogTurnResult> showMenuStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.asList(
-                new Choice(MenuOption.FATURA_ISLEMLERI.getDisplayText()),
-                new Choice(MenuOption.TALEP_SIKAYET.getDisplayText())
-        );
-
+        List<Choice> choices = Arrays.stream(MenuOption.values())
+        .map(option -> new Choice(option.getDisplayText()))
+        .collect(Collectors.toList());
         Activity welcomeMessage = MessageFactory.text("Merhaba! Size nasıl yardımcı olabilirim?");
         welcomeMessage.setSuggestedActions(new SuggestedActions() {{
             setActions(choices.stream()
@@ -133,20 +131,23 @@ public class EchoBot extends ActivityHandler {
         FoundChoice choice = (FoundChoice) stepContext.getResult();
         String selection = choice.getValue();
 
-        if (selection.equals(MenuOption.FATURA_ISLEMLERI.getDisplayText())) {
-            return stepContext.beginDialog("faturaDialog");
-        } else if (selection.equals(MenuOption.TALEP_SIKAYET.getDisplayText())) {
-            return stepContext.beginDialog("talepDialog");
-        }
+        Optional<MenuOption> selectedOption = Arrays.stream(MenuOption.values())
+                .filter(option -> option.getDisplayText().equals(selection))
+                .findFirst();
 
-        return stepContext.endDialog();
+        if (selectedOption.isPresent()) {
+            return stepContext.beginDialog(selectedOption.get().getDialogId());
+        } else {
+            return stepContext.getContext().sendActivity(MessageFactory.text("Geçersiz seçenek! Lütfen tekrar deneyin."))
+                    .thenCompose(result -> stepContext.endDialog());
+        }
     }
 
     private CompletableFuture<DialogTurnResult> showTalepTipiStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = new ArrayList<>();
-        for (TalepTipi tip : TalepTipi.values()) {
-            choices.add(new Choice(tip.getDisplayText()));
-        }
+        List<Choice> choices = Arrays.stream(TalepTipi.values())
+        .map(option -> new Choice(option.getDisplayText()))
+        .collect(Collectors.toList());
+
 
         Activity menuMessage = MessageFactory.text("Lütfen talep tipini seçin:");
         menuMessage.setSuggestedActions(new SuggestedActions() {{
@@ -415,37 +416,73 @@ public class EchoBot extends ActivityHandler {
 
         return card.toAttachment();
     }
+    private enum DialogType {
+        MENU_DIALOG,
+        INTENT_DIALOG,
+        
+    }
 
     // Menü seçenekleri için enum
     private enum MenuOption {
-        FATURA_ISLEMLERI("Fatura İşlemleri 💰"),
-        TALEP_SIKAYET("Talep/Şikayet 📨");
+        FATURA_ISLEMLERI("Fatura İşlemleri 💰","faturaDialog",DialogType.MENU_DIALOG),
+        TALEP_SIKAYET("Talep/Şikayet 📨","talepDialog",DialogType.MENU_DIALOG);
 
         private final String displayText;
+        private final String dialogId;
+        private final DialogType dialogType;
 
-        MenuOption(String displayText) {
+        MenuOption(String displayText, String dialogId, DialogType dialogType) {
             this.displayText = displayText;
+            this.dialogId = dialogId;
+            this.dialogType = dialogType;
         }
+
 
         public String getDisplayText() {
             return displayText;
+            }
+
+        public String getDialogId() {
+            return dialogId;
         }
+
+        public DialogType getDialogType() {
+            return dialogType;
+        }
+  
+
+
     }
 
     // Alt menü seçenekleri için enum
+
     private enum FaturaOption {
-        FATURA_SORGULA("Fatura Sorgula"),
-        FATURA_ODE("Fatura Öde"),
-        GERI("Ana Menü");
+        FATURA_SORGULA("Fatura Sorgula","faturaSorgulamaDialog",DialogType.MENU_DIALOG),
+        FATURA_ODE("Fatura Öde","faturaOdemeDialog",DialogType.MENU_DIALOG),
+        GERI("Ana Menü","menuDialog",DialogType.MENU_DIALOG);
+
 
         private final String displayText;
+        private final String dialogId;
+        private final DialogType dialogType;
 
-        FaturaOption(String displayText) {
+        FaturaOption(String displayText, String dialogId, DialogType dialogType) {
             this.displayText = displayText;
+            this.dialogId = dialogId;
+            this.dialogType = dialogType;
         }
+
 
         public String getDisplayText() {
             return displayText;
+            }
+
+        public String getDialogId() {
+            return dialogId;
+        }
+
+        public DialogType getDialogType() {
+            return dialogType;
         }
     }
 
@@ -454,6 +491,7 @@ public class EchoBot extends ActivityHandler {
         BAGLANTI("Yeni Bağlantı"),
         SAYAC("Sayaç İşlemleri"),
         GERI("Ana Menü");
+
 
         private final String displayText;
 
@@ -492,11 +530,9 @@ public class EchoBot extends ActivityHandler {
     }
 
     private CompletableFuture<DialogTurnResult> showFaturaOptionsStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.asList(
-                new Choice(FaturaOption.FATURA_SORGULA.getDisplayText()),
-                new Choice(FaturaOption.FATURA_ODE.getDisplayText()),
-                new Choice(FaturaOption.GERI.getDisplayText())
-        );
+        List<Choice> choices = Arrays.stream(FaturaOption.values())
+        .map(option -> new Choice(option.getDisplayText()))
+        .collect(Collectors.toList());
 
         PromptOptions promptOptions = new PromptOptions();
         promptOptions.setPrompt(MessageFactory.text("Fatura işlemleriniz için hangi seçeneği tercih edersiniz?"));
@@ -546,31 +582,52 @@ public class EchoBot extends ActivityHandler {
     }
 
     // Add a new enum for Fatura Sorgulama Menüsü options
+    //bu intetn diolog intent isimleri ve turu eklenecek buraya 
     private enum FaturaSorgulamaOption {
-        SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄"),
-        TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑"),
-        ODENMIS_FATURALAR("Ödenmiş Faturalar ✅"),
-        GERI_DON("Geri Dön 🔙");
+        SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄", "LastUnpaidBillIntent", DialogType.INTENT_DIALOG),
+        TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑", "AllUnpaidBillsIntent", DialogType.INTENT_DIALOG),
+        ODENMIS_FATURALAR("Ödenmiş Faturalar ✅", "PaidBillsIntent", DialogType.INTENT_DIALOG),
+        GERI_DON("Geri Dön 🔙", "None", DialogType.MENU_DIALOG);
+
 
         private final String displayText;
+        private final String intentName;
+        private final DialogType dialogType;
 
-        FaturaSorgulamaOption(String displayText) {
+        FaturaSorgulamaOption(String displayText, String intentName, DialogType dialogType) {
             this.displayText = displayText;
+            this.intentName = intentName;
+            this.dialogType = dialogType;
         }
 
         public String getDisplayText() {
             return displayText;
         }
+
+        public String getIntentName() {
+            return intentName;
+        }
+
+        public DialogType getDialogType() {
+            return dialogType;
+        }
+
+        public static FaturaSorgulamaOption fromIntent(String intent) {
+            for (FaturaSorgulamaOption option : values()) {
+                if (option.getIntentName().equals(intent)) {
+                    return option;
+                }
+            }
+            return GERI_DON; // Eğer intent bulunamazsa geri dön
+        }
     }
 
     // Modify handleFaturaSorgulamaStep to include suggested actions
+
     private CompletableFuture<DialogTurnResult> handleFaturaSorgulamaStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.asList(
-                new Choice(FaturaSorgulamaOption.SON_ODENMEMIS_FATURA.getDisplayText()),
-                new Choice(FaturaSorgulamaOption.TUM_ODENMEMIS_FATURALAR.getDisplayText()),
-                new Choice(FaturaSorgulamaOption.ODENMIS_FATURALAR.getDisplayText()),
-                new Choice(FaturaSorgulamaOption.GERI_DON.getDisplayText())
-        );
+        List<Choice> choices = Arrays.stream(FaturaSorgulamaOption.values())
+        .map(option -> new Choice(option.getDisplayText()))
+        .collect(Collectors.toList());
 
         Activity faturaSorgulamaMessage = MessageFactory.text("Fatura sorgulama işlemleriniz için hangi seçeneği tercih edersiniz?");
         faturaSorgulamaMessage.setSuggestedActions(new SuggestedActions() {{
@@ -588,5 +645,27 @@ public class EchoBot extends ActivityHandler {
         promptOptions.setChoices(choices);
 
         return stepContext.prompt("faturaSorgulamaPrompt", promptOptions);
+    }
+
+    private CompletableFuture<DialogTurnResult> handleIntent(WaterfallStepContext stepContext, String intent) {
+        FaturaSorgulamaOption selectedOption = FaturaSorgulamaOption.fromIntent(intent);
+
+        switch (selectedOption) {
+            case SON_ODENMEMIS_FATURA:
+                return stepContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
+                        .thenCompose(result -> stepContext.next(null));
+            case TUM_ODENMEMIS_FATURALAR:
+
+                return stepContext.getContext().sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız listeleniyor..."))
+                        .thenCompose(result -> stepContext.next(null));
+            case ODENMIS_FATURALAR:
+                return stepContext.getContext().sendActivity(MessageFactory.text("Ödenmiş faturalarınız gösteriliyor..."))
+                        .thenCompose(result -> stepContext.next(null));
+
+            case GERI_DON:
+                return stepContext.beginDialog("menuDialog");
+            default:
+                return stepContext.endDialog();
+        }
     }
 }

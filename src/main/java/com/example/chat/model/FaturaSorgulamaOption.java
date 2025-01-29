@@ -4,7 +4,7 @@ public enum FaturaSorgulamaOption implements IntentMenuOption {
     SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄", "LastUnpaidBillIntent", DialogType.INTENT_DIALOG),
     TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑", "AllUnpaidBillsIntent", DialogType.INTENT_DIALOG),
     ODENMIS_FATURALAR("Ödenmiş Faturalar ✅", "PaidBillsIntent", DialogType.INTENT_DIALOG),
-    GERI_DON("Geri Dön 🔙", "None", DialogType.MENU_DIALOG);
+    GERI_DON("Geri Dön 🔙", "None", DialogType.INTENT_DIALOG);
 
 
     private final String displayText;

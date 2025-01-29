@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.chat.model.DialogMenuOption;
@@ -30,7 +32,6 @@ import com.microsoft.bot.builder.StatePropertyAccessor;
 import com.microsoft.bot.builder.TurnContext;
 import com.microsoft.bot.builder.UserState;
 import com.microsoft.bot.dialogs.DialogContext;
-import com.microsoft.bot.dialogs.DialogReason;
 import com.microsoft.bot.dialogs.DialogSet;
 import com.microsoft.bot.dialogs.DialogState;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -51,7 +52,6 @@ import com.microsoft.bot.schema.CardAction;
 import com.microsoft.bot.schema.ChannelAccount;
 import com.microsoft.bot.schema.HeroCard;
 import com.microsoft.bot.schema.SuggestedActions;
-
 /**
  * This class implements the functionality of the Bot.
  *
@@ -62,6 +62,8 @@ import com.microsoft.bot.schema.SuggestedActions;
  * </p>
  */
 public class EchoBot extends ActivityHandler {
+    private static final Logger logger = LoggerFactory.getLogger(EchoBot.class);
+    
     private DialogSet dialogs;
     private ConversationState conversationState;
     private UserState userState;
@@ -412,49 +414,66 @@ public class EchoBot extends ActivityHandler {
     }
 
     private CompletableFuture<DialogTurnResult> handleUserMessage(TurnContext turnContext, String userMessage) {
-        DialogContext dialogContext = dialogs.createContext(turnContext).join();
-        WaterfallStepContext stepContext = new WaterfallStepContext(
-                null, // WaterfallDialog
-                dialogContext, // DialogContext
-                null, // Object (options)
-                null, // Map<String, Object> (values)
-                0, // int (index)
-                DialogReason.BEGIN_CALLED, // DialogReason
-                null // Object (result)
-        );
-        MenuOptionInterface selectedOption = Stream.of(
+        try {
+            DialogContext dialogContext = dialogs.createContext(turnContext).join();
+            
+            // Kullanıcı mesajına göre seçenek bulma
+            MenuOptionInterface selectedOption = findMenuOption(userMessage);
+            
+            if (selectedOption != null) {
+                return handleSelectedOption(dialogContext, selectedOption);
+            }
+            
+            // Intent tespiti
+            String detectedIntent = intentService.detectIntent(userMessage);
+            return handleDetectedIntent(dialogContext, detectedIntent);
+            
+        } catch (Exception ex) {
+            logger.error("Kullanıcı mesajı işlenirken hata oluştu", ex);
+            return turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin."))
+                    .thenCompose(result -> CompletableFuture.completedFuture(null));
+        }
+    }
+
+    private MenuOptionInterface findMenuOption(String userMessage) {
+        return Stream.of(
                 Stream.of(MenuOption.values()),
                 Stream.of(FaturaOption.values()),
                 Stream.of(FaturaSorgulamaOption.values())
             )
-            .flatMap(s -> s) // Tüm stream'leri birleştir
+            .flatMap(s -> s)
             .filter(option -> option.getDisplayText().equals(userMessage))
             .findFirst()
             .orElse(null);
+    }
 
-        if (selectedOption != null) {
-          
-            if (selectedOption.getDialogType() == DialogType.MENU_DIALOG) {
-                return dialogContext.beginDialog(((DialogMenuOption) selectedOption).getDialogId());
-            } else if (selectedOption.getDialogType() == DialogType.INTENT_DIALOG) {
-                return handleDetectedIntent(stepContext, ((IntentMenuOption) selectedOption).getIntentName());
-            }
+    private CompletableFuture<DialogTurnResult> handleSelectedOption(DialogContext dialogContext, MenuOptionInterface selectedOption) {
+        if (selectedOption.getDialogType() == DialogType.MENU_DIALOG) {
+            return dialogContext.beginDialog(((DialogMenuOption) selectedOption).getDialogId());
+        } else if (selectedOption.getDialogType() == DialogType.INTENT_DIALOG) {
+            return handleDetectedIntent(dialogContext, ((IntentMenuOption) selectedOption).getIntentName());
         }
+        return CompletableFuture.completedFuture(null);
+    }
 
-        // Eğer menü seçeneği bulunamadıysa, intent'i tespit et
-        String detectedIntent = intentService.detectIntent(userMessage);
-
-        // Intent'e göre işlem yap
-        switch (detectedIntent) {
+    private CompletableFuture<DialogTurnResult> handleDetectedIntent(DialogContext dialogContext, String intent) {
+        if (intent == null || intent.equals("None")) {
+            return dialogContext.beginDialog("menuDialog");
+        }
+        switch (intent) {
             case "LastUnpaidBillIntent":
-                return turnContext.sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
-                        .thenCompose(result -> stepContext.next(null));
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
+                        .thenCompose(result -> dialogContext.endDialog());
             case "AllUnpaidBillsIntent":
-                return turnContext.sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız gösteriliyor..."))
-                        .thenCompose(result -> stepContext.next(null));
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız gösteriliyor..."))
+                        .thenCompose(result -> dialogContext.endDialog());
+            case "PaidBillsIntent":
+                Attachment faturaCard = createGecmisFaturalarCard();
+                return dialogContext.getContext().sendActivity(MessageFactory.attachment(faturaCard))
+                        .thenCompose(result -> dialogContext.endDialog());
             default:
-                return turnContext.sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))
-                        .thenCompose(result -> stepContext.endDialog());
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))
+                        .thenCompose(result -> dialogContext.beginDialog("menuDialog"));
         }
     }
 
@@ -478,7 +497,7 @@ public class EchoBot extends ActivityHandler {
                 }},
                 new CardAction() {{
                     setTitle("Ana Menüye Dön");
-                    setValue("Ana Menüye Dön 🔙");
+                    setValue("Ana Menü");
                     setType(ActionTypes.POST_BACK);
                 }}
         ));

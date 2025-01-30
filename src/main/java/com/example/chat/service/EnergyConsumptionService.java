@@ -1,6 +1,7 @@
 package com.example.chat.service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,8 @@ public class EnergyConsumptionService {
         return energyConsumptionRepository.save(energyConsumption);
     }
 
-    public List<EnergyConsumption> getEnergyConsumptionsByUserId(Long userId) {
-        return energyConsumptionRepository.findByUserId(userId);
+    public CompletableFuture<List<EnergyConsumption>> getEnergyConsumptionsByUserId(Long userId) {
+        return CompletableFuture.supplyAsync(() -> energyConsumptionRepository.findByUserId(userId));
     }
 
     public void deleteEnergyConsumption(Long id) {

@@ -1,6 +1,7 @@
 package com.example.chat.service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,8 +23,8 @@ public class PaymentService {
         return paymentRepository.findByBillId(billId);
     }
 
-    public List<Payment> getAllPaymentsByUserId(Long userId) {
-        return paymentRepository.findByUserId(userId);
+    public CompletableFuture<List<Payment>> getAllPaymentsByUserId(Long userId) {
+        return CompletableFuture.supplyAsync(() -> paymentRepository.findByUserId(userId));
     }
 
     public Double getTotalPaymentsByUserId(Long userId) {

@@ -3,6 +3,10 @@
 
 package com.example.chat;
 
+import com.example.chat.dialogs.EnergyDialog;
+import com.example.chat.dialogs.SupportDialog;
+import com.example.chat.service.EnergyConsumptionService;
+import com.example.chat.service.SupportRequestService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -54,6 +58,16 @@ public class Application extends BotDependencyConfiguration {
     }
 
     @Bean
+    public EnergyDialog energyDialog(EnergyConsumptionService energyConsumptionService) {
+        return new EnergyDialog(energyConsumptionService);
+    }
+
+    @Bean
+    public SupportDialog supportDialog(SupportRequestService supportRequestService) {
+        return new SupportDialog(supportRequestService);
+    }
+
+    @Bean
     @Primary
     public Storage storage() {
         return new MemoryStorage();
@@ -70,8 +84,8 @@ public class Application extends BotDependencyConfiguration {
      * @return The Bot implementation for this application.
      */
     @Bean
-    public Bot getBot(ConversationState conversationState, UserState userState) {
-        return new EchoBot(conversationState, userState);
+    public Bot getBot(ConversationState conversationState, UserState userState, EnergyDialog energyDialog, SupportDialog supportDialog) {
+        return new EchoBot(conversationState, userState, energyDialog, supportDialog);
     }
 
     /**

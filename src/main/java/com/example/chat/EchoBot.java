@@ -11,20 +11,24 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.example.chat.dialogs.EnergyDialog;
+import com.example.chat.dialogs.SupportDialog;
+import com.example.chat.entity.Bill;
+import com.example.chat.entity.Payment;
+import com.example.chat.entity.SupportRequest;
+import com.example.chat.model.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.example.chat.model.DialogMenuOption;
-import com.example.chat.model.DialogType;
-import com.example.chat.model.FaturaOption;
-import com.example.chat.model.FaturaSorgulamaOption;
-import com.example.chat.model.IntentMenuOption;
-import com.example.chat.model.MenuOption;
-import com.example.chat.model.MenuOptionInterface;
-import com.example.chat.model.TalepTipi;
+import com.example.chat.service.BillService;
+import com.example.chat.service.EnergyConsumptionService;
+import com.example.chat.entity.EnergyConsumption;
 import com.example.chat.service.IntentService;
+import com.example.chat.service.PaymentService;
+import com.example.chat.service.SubscriptionService;
+import com.example.chat.service.SupportRequestService;
 import com.microsoft.bot.builder.ActivityHandler;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MessageFactory;
@@ -64,28 +68,87 @@ import com.microsoft.bot.schema.SuggestedActions;
 public class EchoBot extends ActivityHandler {
     private static final Logger logger = LoggerFactory.getLogger(EchoBot.class);
     
-    private DialogSet dialogs;
-    private ConversationState conversationState;
-    private UserState userState;
+    private final DialogSet dialogs;
+    private final ConversationState conversationState;
+    private final UserState userState;
     private static final String DEFAULT_USER = "Değerli Müşterimiz";
     @Autowired
     private  IntentService intentService;
+    @Autowired
+    private BillService billService;
+    @Autowired
+    private PaymentService paymentService;
+    @Autowired
+    private SubscriptionService subscriptionService;
+    @Autowired
+    private EnergyConsumptionService energyConsumptionService;
+    @Autowired
+    private SupportRequestService supportRequestService;
+    private final EnergyDialog energyDialog;
+    private final SupportDialog supportDialog;
 
-    public EchoBot(ConversationState withConversationState, UserState withUserState) {
-        conversationState = withConversationState;
-        userState = withUserState;
+    // Dialog ID sabitleri
+    private static final String MENU_DIALOG_ID = "menuDialog";
+    private static final String TALEP_DIALOG_ID = "talepDialog";
+    private static final String FATURA_DIALOG_ID = "faturaDialog";
+    private static final String FATURA_SORGULAMA_DIALOG_ID = "faturaSorgulamaDialog";
+
+    public EchoBot(ConversationState conversationState, UserState userState, 
+                   EnergyDialog energyDialog, SupportDialog supportDialog) {
+        this.conversationState = conversationState;
+        this.userState = userState;
+        this.energyDialog = energyDialog;
+        this.supportDialog = supportDialog;
 
         StatePropertyAccessor<DialogState> dialogStateAccessor =
                 conversationState.createProperty("DialogState");
 
         dialogs = new DialogSet(dialogStateAccessor);
 
-        WaterfallStep[] menuSteps = new WaterfallStep[] {
+        // Dialogları ekle
+        addMenuDialog();
+        addTalepDialog();
+        addFaturaDialog();
+        addFaturaSorgulamaDialog();
+        dialogs.add(energyDialog);
+        dialogs.add(supportDialog);
+    }
+
+    private void addMenuDialog() {
+        WaterfallStep[] menuSteps = createMenuSteps();
+        dialogs.add(new WaterfallDialog(MENU_DIALOG_ID, Arrays.asList(menuSteps)));
+        dialogs.add(new ChoicePrompt("menuPrompt"));
+    }
+
+    private void addTalepDialog() {
+        WaterfallStep[] talepSteps = createTalepSteps();
+        dialogs.add(new WaterfallDialog(TALEP_DIALOG_ID, Arrays.asList(talepSteps)));
+        dialogs.add(new ChoicePrompt("talepPrompt"));
+        dialogs.add(new TextPrompt("detayPrompt"));
+        dialogs.add(new ConfirmPrompt("confirmPrompt"));
+    }
+
+    private void addFaturaDialog() {
+        WaterfallStep[] faturaSteps = createFaturaSteps();
+        dialogs.add(new WaterfallDialog(FATURA_DIALOG_ID, Arrays.asList(faturaSteps)));
+        dialogs.add(new ChoicePrompt("faturaPrompt"));
+    }
+
+    private void addFaturaSorgulamaDialog() {
+        WaterfallStep[] faturaSorgulamaSteps = createFaturaSorgulamaSteps();
+        dialogs.add(new WaterfallDialog(FATURA_SORGULAMA_DIALOG_ID, Arrays.asList(faturaSorgulamaSteps)));
+        dialogs.add(new ChoicePrompt("faturaSorgulamaPrompt"));
+    }
+
+    private WaterfallStep[] createMenuSteps() {
+        return new WaterfallStep[] {
                 this::showMenuStep,
                 this::finalStep
         };
+    }
 
-        WaterfallStep[] talepSteps = new WaterfallStep[] {
+    private WaterfallStep[] createTalepSteps() {
+        return new WaterfallStep[] {
                 this::showTalepTipiStep,
                 this::handleTalepTipiStep,
                 this::getTalepDetayStep,
@@ -93,30 +156,22 @@ public class EchoBot extends ActivityHandler {
                 this::confirmTalepStep,
                 this::processTalepStep
         };
+    }
 
-        WaterfallStep[] faturaSteps = new WaterfallStep[] {
+    private WaterfallStep[] createFaturaSteps() {
+        return new WaterfallStep[] {
                 this::showFaturaOptionsStep,
                 this::handleFaturaSelectionStep,
                 this::confirmFaturaOdemeStep,
                 this::finalStep
         };
+    }
 
-        dialogs.add(new WaterfallDialog("menuDialog", Arrays.asList(menuSteps)));
-        dialogs.add(new WaterfallDialog("talepDialog", Arrays.asList(talepSteps)));
-        dialogs.add(new WaterfallDialog("faturaDialog", Arrays.asList(faturaSteps)));
-        dialogs.add(new ChoicePrompt("menuPrompt"));
-        dialogs.add(new ChoicePrompt("talepPrompt"));
-        dialogs.add(new ChoicePrompt("faturaPrompt"));
-        dialogs.add(new TextPrompt("detayPrompt"));
-        dialogs.add(new ConfirmPrompt("confirmPrompt"));
-
-        // Move the new dialog and prompt definitions into the constructor
-        WaterfallStep[] faturaSorgulamaSteps = new WaterfallStep[] {
+    private WaterfallStep[] createFaturaSorgulamaSteps() {
+        return new WaterfallStep[] {
                 this::handleFaturaSorgulamaStep,
-                this::finalStep // You can add more steps if needed
+                this::finalStep
         };
-        dialogs.add(new WaterfallDialog("faturaSorgulamaDialog", Arrays.asList(faturaSorgulamaSteps)));
-        dialogs.add(new ChoicePrompt("faturaSorgulamaPrompt"));
     }
 
     private CompletableFuture<DialogTurnResult> showMenuStep(WaterfallStepContext stepContext) {
@@ -143,7 +198,7 @@ public class EchoBot extends ActivityHandler {
 
 
     private CompletableFuture<DialogTurnResult> handleDetectedIntent(
-        WaterfallStepContext stepContext, 
+        WaterfallStepContext stepContext,
         String intent
     ) {
         System.out.println("Detected intent: " + intent);
@@ -152,12 +207,12 @@ public class EchoBot extends ActivityHandler {
                 return stepContext.getContext()
                     .sendActivity(MessageFactory.text("Showing your last unpaid bill..."))
                     .thenCompose(result -> stepContext.next(null));
-                
+
             case "AllUnpaidBillsIntent":
                 return stepContext.getContext()
                     .sendActivity(MessageFactory.text("Showing all your unpaid bills..."))
                     .thenCompose(result -> stepContext.next(null));
-                
+
             default:
                 return stepContext.getContext()
                     .sendActivity(MessageFactory.text("I'm not sure what you want. Please try again."))
@@ -379,7 +434,7 @@ public class EchoBot extends ActivityHandler {
                 .orElse(CompletableFuture.completedFuture(null))
                 .thenCompose(result -> {
                     DialogContext dialogContext = dialogs.createContext(turnContext).join();
-                    return dialogContext.beginDialog("menuDialog")
+                    return dialogContext.beginDialog(MENU_DIALOG_ID)
                             .thenApply(dialogResult -> null);
                 });
     }
@@ -403,7 +458,7 @@ public class EchoBot extends ActivityHandler {
                     .thenCompose(result -> userState.saveChanges(turnContext))
                     .exceptionally(ex -> {
                         turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Ana menüye yönlendiriliyorsunuz...")).join();
-                        dialogContext.beginDialog("menuDialog").join();
+                        dialogContext.beginDialog(MENU_DIALOG_ID).join();
                         return null;
                     });
 
@@ -416,18 +471,18 @@ public class EchoBot extends ActivityHandler {
     private CompletableFuture<DialogTurnResult> handleUserMessage(TurnContext turnContext, String userMessage) {
         try {
             DialogContext dialogContext = dialogs.createContext(turnContext).join();
-            
+
             // Kullanıcı mesajına göre seçenek bulma
             MenuOptionInterface selectedOption = findMenuOption(userMessage);
-            
+
             if (selectedOption != null) {
                 return handleSelectedOption(dialogContext, selectedOption);
             }
-            
+
             // Intent tespiti
             String detectedIntent = intentService.detectIntent(userMessage);
             return handleDetectedIntent(dialogContext, detectedIntent);
-            
+
         } catch (Exception ex) {
             logger.error("Kullanıcı mesajı işlenirken hata oluştu", ex);
             return turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin."))
@@ -439,7 +494,10 @@ public class EchoBot extends ActivityHandler {
         return Stream.of(
                 Stream.of(MenuOption.values()),
                 Stream.of(FaturaOption.values()),
-                Stream.of(FaturaSorgulamaOption.values())
+                Stream.of(FaturaSorgulamaOption.values()),
+                Stream.of(EnergyIntentOption.values()),
+                Stream.of(SupportOption.values()),
+                Stream.of(EnergyOption.values())
             )
             .flatMap(s -> s)
             .filter(option -> option.getDisplayText().equals(userMessage))
@@ -457,43 +515,112 @@ public class EchoBot extends ActivityHandler {
     }
 
     private CompletableFuture<DialogTurnResult> handleDetectedIntent(DialogContext dialogContext, String intent) {
+        Long userId = 1L; // Kullanıcı ID'sini dinamik olarak alın
+
         if (intent == null || intent.equals("None")) {
-            return dialogContext.beginDialog("menuDialog");
+            return dialogContext.beginDialog(MENU_DIALOG_ID);
         }
 
         switch (intent) {
             case "LastUnpaidBillIntent":
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return handleLastUnpaidBill(userId, dialogContext);
             case "AllUnpaidBillsIntent":
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Tüm ödenmemiş faturalarınız gösteriliyor..."))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return handleAllUnpaidBills(userId, dialogContext);
             case "PaidBillsIntent":
-                Attachment faturaCard = createGecmisFaturalarCard();
-                return dialogContext.getContext().sendActivity(MessageFactory.attachment(faturaCard))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return handlePaidBills(userId, dialogContext);
             case "EnergySavingTipsIntent":
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Enerji tasarrufu ipuçları:\n\n" +
-                        "1. Aydınlatmada LED ampuller kullanın.\n" +
-                        "2. Elektrikli cihazları bekleme modunda bırakmayın.\n" +
-                        "3. Klimaları 24-26°C arasında kullanın.\n" +
-                        "4. Buzdolabınızı güneş almayan bir yere yerleştirin.\n" +
-                        "5. Çamaşır makinesini tam dolu çalıştırın."))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return showEnergySavingTips(dialogContext);
             case "ConsumptionAnalysisIntent":
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Tüketim analiziniz:\n\n" +
-                        "⚡ Son 3 aylık ortalama tüketim: 250 kWh\n" +
-                        "📊 Geçen aya göre değişim: %5 azalma\n" +
-                        "🌍 Çevreye katkınız: 120 kg CO2 tasarrufu\n" +
-                        "💡 Öneri: Tüketiminizi düşürmek için enerji tasarrufu ipuçlarını inceleyin."))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return handleConsumptionAnalysis(userId, dialogContext);
             case "SupportRequestIntent":
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Destek talebiniz alındı. En kısa sürede dönüş yapılacaktır."))
-                        .thenCompose(result -> dialogContext.endDialog());
+                return handleSupportRequest(userId, dialogContext);
             default:
                 return dialogContext.getContext().sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))
-                        .thenCompose(result -> dialogContext.beginDialog("menuDialog"));
+                        .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
         }
+    }
+
+    private CompletableFuture<DialogTurnResult> handleLastUnpaidBill(Long userId, DialogContext dialogContext) {
+        return billService.getUnpaidBillsByUserId(userId)
+                .thenCompose(bills -> {
+                    if (!bills.isEmpty()) {
+                        Bill lastBill = bills.get(0);
+                        return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız: " + lastBill.getBillNumber() + " - " + lastBill.getAmount() + " TL"))
+                                .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+                    } else {
+                        return dialogContext.getContext().sendActivity(MessageFactory.text("Ödenmemiş faturanız bulunmamaktadır."))
+                                .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+                    }
+                });
+    }
+
+    private CompletableFuture<DialogTurnResult> handleAllUnpaidBills(Long userId, DialogContext dialogContext) {
+        return billService.getUnpaidBillsByUserId(userId)
+                .thenCompose(bills -> {
+                    StringBuilder response = new StringBuilder("Ödenmemiş faturalarınız:\n");
+                    if (!bills.isEmpty()) {
+                        for (Bill bill : bills) {
+                            response.append(bill.getBillNumber()).append(" - ").append(bill.getAmount()).append(" TL\n");
+                        }
+                    } else {
+                        response.append("Ödenmemiş faturanız bulunmamaktadır.");
+                    }
+                    return dialogContext.getContext().sendActivity(MessageFactory.text(response.toString()))
+                            .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+                });
+    }
+
+    private CompletableFuture<DialogTurnResult> handlePaidBills(Long userId, DialogContext dialogContext) {
+        return paymentService.getAllPaymentsByUserId(userId)
+                .thenCompose(payments -> {
+                    StringBuilder response = new StringBuilder("Ödenmiş faturalarınız:\n");
+                    if (!payments.isEmpty()) {
+                        for (Payment payment : payments) {
+                            response.append("Fatura No: ").append(payment.getBillId()).append(" - ").append(payment.getAmountPaid()).append(" TL\n");
+                        }
+                    } else {
+                        response.append("Ödenmiş faturanız bulunmamaktadır.");
+                    }
+                    return dialogContext.getContext().sendActivity(MessageFactory.text(response.toString()))
+                            .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+                });
+    }
+
+    private CompletableFuture<DialogTurnResult> showEnergySavingTips(DialogContext dialogContext) {
+        String tips = "Enerji tasarrufu ipuçları:\n\n" +
+                      "1. Aydınlatmada LED ampuller kullanın.\n" +
+                      "2. Elektrikli cihazları bekleme modunda bırakmayın.\n" +
+                      "3. Klimaları 24-26°C arasında kullanın.\n" +
+                      "4. Buzdolabınızı güneş almayan bir yere yerleştirin.\n" +
+                      "5. Çamaşır makinesini tam dolu çalıştırın.";
+        return dialogContext.getContext().sendActivity(MessageFactory.text(tips))
+                .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+    }
+
+    private CompletableFuture<DialogTurnResult> handleConsumptionAnalysis(Long userId, DialogContext dialogContext) {
+        return energyConsumptionService.getEnergyConsumptionsByUserId(userId)
+                .thenCompose(consumptions -> {
+                    StringBuilder response = new StringBuilder("Enerji tüketim analiziniz:\n");
+                    if (!consumptions.isEmpty()) {
+                        for (EnergyConsumption consumption : consumptions) {
+                            response.append("Dönem: ").append(consumption.getPeriod()).append(" - Tüketim: ").append(consumption.getConsumptionAmount()).append(" kWh\n");
+                        }
+                    } else {
+                        response.append("Enerji tüketim veriniz bulunmamaktadır.");
+                    }
+                    return dialogContext.getContext().sendActivity(MessageFactory.text(response.toString()))
+                            .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
+                });
+    }
+
+    private CompletableFuture<DialogTurnResult> handleSupportRequest(Long userId, DialogContext dialogContext) {
+        SupportRequest supportRequest = new SupportRequest();
+        supportRequest.setUserId(userId);
+        supportRequest.setRequestType("General Inquiry");
+        supportRequest.setDescription("Destek talebi alındı.");
+        supportRequestService.saveSupportRequest(supportRequest);
+        return dialogContext.getContext().sendActivity(MessageFactory.text("Destek talebiniz alındı. En kısa sürede dönüş yapılacaktır."))
+                .thenCompose(result -> dialogContext.beginDialog(MENU_DIALOG_ID));
     }
 
     private Attachment createGecmisFaturalarCard() {
@@ -549,7 +676,7 @@ public class EchoBot extends ActivityHandler {
             String selection = choice.getValue();
 
             if (selection.equals(FaturaOption.FATURA_SORGULA.getDisplayText())) {
-                return stepContext.replaceDialog("faturaSorgulamaDialog");
+                return stepContext.replaceDialog(FATURA_SORGULAMA_DIALOG_ID);
             } else if (selection.equals(FaturaOption.FATURA_ODE.getDisplayText())) {
                 String faturaDetay = String.format(
                         "Fatura Detayları:\nDönem: Mart 2024\nTutar: 856,75 TL\nSon Ödeme: 25.03.2024\nDurum: Ödenmemiş\n\nÖdemek ister misiniz?"

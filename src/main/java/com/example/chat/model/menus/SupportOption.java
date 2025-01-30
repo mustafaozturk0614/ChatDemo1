@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum SupportOption implements DialogMenuOption {
     GENERAL_INQUIRY("📝 Genel Bilgi", "generalInquiryDialog", DialogType.MENU_DIALOG),

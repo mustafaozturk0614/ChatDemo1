@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public interface MenuOptionInterface {
     String getDisplayText();

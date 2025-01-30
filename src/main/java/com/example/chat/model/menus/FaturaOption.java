@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum FaturaOption implements  DialogMenuOption {
     FATURA_SORGULA("Fatura Sorgula","faturaSorgulamaDialog",DialogType.MENU_DIALOG),

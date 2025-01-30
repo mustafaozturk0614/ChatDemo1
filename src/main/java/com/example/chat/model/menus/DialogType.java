@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum DialogType {
     MENU_DIALOG,

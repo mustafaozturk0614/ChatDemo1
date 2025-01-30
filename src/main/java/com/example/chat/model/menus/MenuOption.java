@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum MenuOption implements DialogMenuOption {
     FATURA_ISLEMLERI("Fatura İşlemleri 💰", "faturaDialog", DialogType.MENU_DIALOG),
@@ -29,5 +29,13 @@ public enum MenuOption implements DialogMenuOption {
     @Override
     public DialogType getDialogType() {
         return dialogType;
+    }
+    public static MenuOption fromDisplayText(String displayText) {
+        for (MenuOption menuOption : MenuOption.values()) {
+            if (menuOption.getDisplayText().equalsIgnoreCase(displayText)) {
+                return menuOption;
+            }
+        }
+        throw new IllegalArgumentException("Geçersiz menü seçeneği: " + displayText);
     }
 } 

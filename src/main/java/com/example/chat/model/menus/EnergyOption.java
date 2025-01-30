@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum EnergyOption implements DialogMenuOption {
     CONSUMPTION_ANALYSIS("📊 Tüketim Analizi", "consumptionAnalysisDialog", DialogType.MENU_DIALOG),

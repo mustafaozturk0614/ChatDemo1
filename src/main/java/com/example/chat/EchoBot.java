@@ -11,12 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.example.chat.dialogs.EnergyDialog;
-import com.example.chat.dialogs.SupportDialog;
+import com.example.chat.dialogs.*;
 import com.example.chat.entity.Bill;
 import com.example.chat.entity.Payment;
 import com.example.chat.entity.SupportRequest;
-import com.example.chat.model.*;
+import com.example.chat.model.menus.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +66,7 @@ import com.microsoft.bot.schema.SuggestedActions;
  */
 public class EchoBot extends ActivityHandler {
     private static final Logger logger = LoggerFactory.getLogger(EchoBot.class);
-    
+
     private final DialogSet dialogs;
     private final ConversationState conversationState;
     private final UserState userState;
@@ -93,7 +92,7 @@ public class EchoBot extends ActivityHandler {
     private static final String FATURA_DIALOG_ID = "faturaDialog";
     private static final String FATURA_SORGULAMA_DIALOG_ID = "faturaSorgulamaDialog";
 
-    public EchoBot(ConversationState conversationState, UserState userState, 
+    public EchoBot(ConversationState conversationState, UserState userState,
                    EnergyDialog energyDialog, SupportDialog supportDialog) {
         this.conversationState = conversationState;
         this.userState = userState;
@@ -106,96 +105,75 @@ public class EchoBot extends ActivityHandler {
         dialogs = new DialogSet(dialogStateAccessor);
 
         // Dialogları ekle
-        addMenuDialog();
-        addTalepDialog();
-        addFaturaDialog();
-        addFaturaSorgulamaDialog();
+        dialogs.add(new MenuDialog(MENU_DIALOG_ID));
+        dialogs.add(new TalepDialog(TALEP_DIALOG_ID));
+        dialogs.add(new FaturaDialog(FATURA_DIALOG_ID));
+        dialogs.add(new FaturaSorgulamaDialog(FATURA_SORGULAMA_DIALOG_ID));
         dialogs.add(energyDialog);
         dialogs.add(supportDialog);
     }
 
-    private void addMenuDialog() {
-        WaterfallStep[] menuSteps = createMenuSteps();
-        dialogs.add(new WaterfallDialog(MENU_DIALOG_ID, Arrays.asList(menuSteps)));
-        dialogs.add(new ChoicePrompt("menuPrompt"));
-    }
+//    private void addMenuDialog() {
+//        WaterfallStep[] menuSteps = createMenuSteps();
+//        dialogs.add(new WaterfallDialog(MENU_DIALOG_ID, Arrays.asList(menuSteps)));
+//        dialogs.add(new ChoicePrompt("menuPrompt"));
+//    }
+//
+//    private void addTalepDialog() {
+//        WaterfallStep[] talepSteps = createTalepSteps();
+//        dialogs.add(new WaterfallDialog(TALEP_DIALOG_ID, Arrays.asList(talepSteps)));
+//        dialogs.add(new ChoicePrompt("talepPrompt"));
+//        dialogs.add(new TextPrompt("detayPrompt"));
+//        dialogs.add(new ConfirmPrompt("confirmPrompt"));
+//    }
+//
+//    private void addFaturaDialog() {
+//        WaterfallStep[] faturaSteps = createFaturaSteps();
+//        dialogs.add(new WaterfallDialog(FATURA_DIALOG_ID, Arrays.asList(faturaSteps)));
+//        dialogs.add(new ChoicePrompt("faturaPrompt"));
+//    }
+//
+//    private void addFaturaSorgulamaDialog() {
+//        WaterfallStep[] faturaSorgulamaSteps = createFaturaSorgulamaSteps();
+//        dialogs.add(new WaterfallDialog(FATURA_SORGULAMA_DIALOG_ID, Arrays.asList(faturaSorgulamaSteps)));
+//        dialogs.add(new ChoicePrompt("faturaSorgulamaPrompt"));
+//    }
+//
+//    private WaterfallStep[] createMenuSteps() {
+//        return new WaterfallStep[] {
+//                this::showMenuStep,
+//                this::finalStep
+//        };
+//    }
+//
+//    private WaterfallStep[] createTalepSteps() {
+//        return new WaterfallStep[] {
+//                this::showTalepTipiStep,
+//                this::handleTalepTipiStep,
+//                this::getTalepDetayStep,
+//                this::handleTalepDetayStep,
+//                this::confirmTalepStep,
+//                this::processTalepStep
+//        };
+//    }
+//
+//    private WaterfallStep[] createFaturaSteps() {
+//        return new WaterfallStep[] {
+//                this::showFaturaOptionsStep,
+//                this::handleFaturaSelectionStep,
+//                this::confirmFaturaOdemeStep,
+//                this::finalStep
+//        };
+//    }
+//
+//    private WaterfallStep[] createFaturaSorgulamaSteps() {
+//        return new WaterfallStep[] {
+//                this::handleFaturaSorgulamaStep,
+//                this::finalStep
+//        };
+//    }
 
-    private void addTalepDialog() {
-        WaterfallStep[] talepSteps = createTalepSteps();
-        dialogs.add(new WaterfallDialog(TALEP_DIALOG_ID, Arrays.asList(talepSteps)));
-        dialogs.add(new ChoicePrompt("talepPrompt"));
-        dialogs.add(new TextPrompt("detayPrompt"));
-        dialogs.add(new ConfirmPrompt("confirmPrompt"));
-    }
-
-    private void addFaturaDialog() {
-        WaterfallStep[] faturaSteps = createFaturaSteps();
-        dialogs.add(new WaterfallDialog(FATURA_DIALOG_ID, Arrays.asList(faturaSteps)));
-        dialogs.add(new ChoicePrompt("faturaPrompt"));
-    }
-
-    private void addFaturaSorgulamaDialog() {
-        WaterfallStep[] faturaSorgulamaSteps = createFaturaSorgulamaSteps();
-        dialogs.add(new WaterfallDialog(FATURA_SORGULAMA_DIALOG_ID, Arrays.asList(faturaSorgulamaSteps)));
-        dialogs.add(new ChoicePrompt("faturaSorgulamaPrompt"));
-    }
-
-    private WaterfallStep[] createMenuSteps() {
-        return new WaterfallStep[] {
-                this::showMenuStep,
-                this::finalStep
-        };
-    }
-
-    private WaterfallStep[] createTalepSteps() {
-        return new WaterfallStep[] {
-                this::showTalepTipiStep,
-                this::handleTalepTipiStep,
-                this::getTalepDetayStep,
-                this::handleTalepDetayStep,
-                this::confirmTalepStep,
-                this::processTalepStep
-        };
-    }
-
-    private WaterfallStep[] createFaturaSteps() {
-        return new WaterfallStep[] {
-                this::showFaturaOptionsStep,
-                this::handleFaturaSelectionStep,
-                this::confirmFaturaOdemeStep,
-                this::finalStep
-        };
-    }
-
-    private WaterfallStep[] createFaturaSorgulamaSteps() {
-        return new WaterfallStep[] {
-                this::handleFaturaSorgulamaStep,
-                this::finalStep
-        };
-    }
-
-    private CompletableFuture<DialogTurnResult> showMenuStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.stream(MenuOption.values())
-        .map(option -> new Choice(option.getDisplayText()))
-        .collect(Collectors.toList());
-        Activity welcomeMessage = MessageFactory.text("Merhaba! Size nasıl yardımcı olabilirim?");
-        welcomeMessage.setSuggestedActions(new SuggestedActions() {{
-            setActions(choices.stream()
-                    .map(choice -> new CardAction() {{
-                        setTitle(choice.getValue());
-                        setValue(choice.getValue());
-                        setType(ActionTypes.POST_BACK);
-                    }})
-                    .collect(Collectors.toList()));
-        }});
-
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(welcomeMessage);
-        promptOptions.setChoices(choices);
-
-        return stepContext.prompt("menuPrompt", promptOptions);
-    }
-
+ 
 
     private CompletableFuture<DialogTurnResult> handleDetectedIntent(
         WaterfallStepContext stepContext,
@@ -220,116 +198,116 @@ public class EchoBot extends ActivityHandler {
         }
     }
 
-    private CompletableFuture<DialogTurnResult> showTalepTipiStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.stream(TalepTipi.values())
-        .map(option -> new Choice(option.getDisplayText()))
-        .collect(Collectors.toList());
+    // private CompletableFuture<DialogTurnResult> showTalepTipiStep(WaterfallStepContext stepContext) {
+    //     List<Choice> choices = Arrays.stream(TalepTipi.values())
+    //     .map(option -> new Choice(option.getDisplayText()))
+    //     .collect(Collectors.toList());
 
 
-        Activity menuMessage = MessageFactory.text("Lütfen talep tipini seçin:");
-        menuMessage.setSuggestedActions(new SuggestedActions() {{
-            setActions(choices.stream()
-                    .map(choice -> new CardAction() {{
-                        setTitle(choice.getValue());
-                        setValue(choice.getValue());
-                        setType(ActionTypes.POST_BACK);
-                    }})
-                    .collect(Collectors.toList()));
-        }});
+    //     Activity menuMessage = MessageFactory.text("Lütfen talep tipini seçin:");
+    //     menuMessage.setSuggestedActions(new SuggestedActions() {{
+    //         setActions(choices.stream()
+    //                 .map(choice -> new CardAction() {{
+    //                     setTitle(choice.getValue());
+    //                     setValue(choice.getValue());
+    //                     setType(ActionTypes.POST_BACK);
+    //                 }})
+    //                 .collect(Collectors.toList()));
+    //     }});
 
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(menuMessage);
-        promptOptions.setChoices(choices);
+    //     PromptOptions promptOptions = new PromptOptions();
+    //     promptOptions.setPrompt(menuMessage);
+    //     promptOptions.setChoices(choices);
 
-        return stepContext.prompt("talepPrompt", promptOptions);
-    }
+    //     return stepContext.prompt("talepPrompt", promptOptions);
+    // }
 
-    private CompletableFuture<DialogTurnResult> handleTalepTipiStep(WaterfallStepContext stepContext) {
-        FoundChoice choice = (FoundChoice) stepContext.getResult();
-        String selection = choice.getValue();
+    // private CompletableFuture<DialogTurnResult> handleTalepTipiStep(WaterfallStepContext stepContext) {
+    //     FoundChoice choice = (FoundChoice) stepContext.getResult();
+    //     String selection = choice.getValue();
 
-        if (selection.equals(TalepTipi.GERI.getDisplayText())) {
-            return stepContext.endDialog();
-        }
+    //     if (selection.equals(TalepTipi.GERI.getDisplayText())) {
+    //         return stepContext.endDialog();
+    //     }
 
-        stepContext.getValues().put("talepTipi", selection);
-        return stepContext.next(selection);
-    }
+    //     stepContext.getValues().put("talepTipi", selection);
+    //     return stepContext.next(selection);
+    // }
 
-    private CompletableFuture<DialogTurnResult> getTalepDetayStep(WaterfallStepContext stepContext) {
-        String talepTipi = (String) stepContext.getValues().get("talepTipi");
-        String promptText = "";
+    // private CompletableFuture<DialogTurnResult> getTalepDetayStep(WaterfallStepContext stepContext) {
+    //     String talepTipi = (String) stepContext.getValues().get("talepTipi");
+    //     String promptText = "";
 
-        if (talepTipi.equals(TalepTipi.ARIZA.getDisplayText())) {
-            promptText = "Lütfen arıza ile ilgili detaylı bilgi verin (konum, sorun türü vb.):";
-        } else if (talepTipi.equals(TalepTipi.BAGLANTI.getDisplayText())) {
-            promptText = "Lütfen yeni bağlantı için adres ve iletişim bilgilerinizi girin:";
-        } else if (talepTipi.equals(TalepTipi.SAYAC.getDisplayText())) {
-            promptText = "Lütfen sayaç işleminizi detaylandırın:";
-        }
+    //     if (talepTipi.equals(TalepTipi.ARIZA.getDisplayText())) {
+    //         promptText = "Lütfen arıza ile ilgili detaylı bilgi verin (konum, sorun türü vb.):";
+    //     } else if (talepTipi.equals(TalepTipi.BAGLANTI.getDisplayText())) {
+    //         promptText = "Lütfen yeni bağlantı için adres ve iletişim bilgilerinizi girin:";
+    //     } else if (talepTipi.equals(TalepTipi.SAYAC.getDisplayText())) {
+    //         promptText = "Lütfen sayaç işleminizi detaylandırın:";
+    //     }
 
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(MessageFactory.text(promptText));
-        return stepContext.prompt("detayPrompt", promptOptions);
-    }
+    //     PromptOptions promptOptions = new PromptOptions();
+    //     promptOptions.setPrompt(MessageFactory.text(promptText));
+    //     return stepContext.prompt("detayPrompt", promptOptions);
+    // }
 
-    private CompletableFuture<DialogTurnResult> handleTalepDetayStep(WaterfallStepContext stepContext) {
-        String detay = (String) stepContext.getResult();
-        stepContext.getValues().put("talepDetay", detay);
+    // private CompletableFuture<DialogTurnResult> handleTalepDetayStep(WaterfallStepContext stepContext) {
+    //     String detay = (String) stepContext.getResult();
+    //     stepContext.getValues().put("talepDetay", detay);
 
-        String talepTipi = (String) stepContext.getValues().get("talepTipi");
-        String onayMesaji = String.format(
-                "Talebinizi onaylıyor musunuz?\n\nTalep Tipi: %s\nDetay: %s",
-                talepTipi,
-                detay
-        );
+    //     String talepTipi = (String) stepContext.getValues().get("talepTipi");
+    //     String onayMesaji = String.format(
+    //             "Talebinizi onaylıyor musunuz?\n\nTalep Tipi: %s\nDetay: %s",
+    //             talepTipi,
+    //             detay
+    //     );
 
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(MessageFactory.text(onayMesaji));
-        return stepContext.prompt("confirmPrompt", promptOptions);
-    }
+    //     PromptOptions promptOptions = new PromptOptions();
+    //     promptOptions.setPrompt(MessageFactory.text(onayMesaji));
+    //     return stepContext.prompt("confirmPrompt", promptOptions);
+    // }
 
-    private CompletableFuture<DialogTurnResult> confirmTalepStep(WaterfallStepContext stepContext) {
-        boolean onaylandi = (boolean) stepContext.getResult();
+    // private CompletableFuture<DialogTurnResult> confirmTalepStep(WaterfallStepContext stepContext) {
+    //     boolean onaylandi = (boolean) stepContext.getResult();
 
-        if (onaylandi) {
-            String talepNo = String.format("T%d", (int)(Math.random() * 100000));
-            String successMessage = String.format("Talebiniz başarıyla oluşturuldu!\nTakip Numaranız: %s", talepNo);
-            return stepContext.getContext().sendActivity(MessageFactory.text(successMessage))
-                    .thenCompose(result -> stepContext.next(talepNo));
-        } else {
-            return stepContext.getContext().sendActivity(MessageFactory.text("Talep iptal edildi."))
-                    .thenCompose(result -> stepContext.endDialog());
-        }
-    }
+    //     if (onaylandi) {
+    //         String talepNo = String.format("T%d", (int)(Math.random() * 100000));
+    //         String successMessage = String.format("Talebiniz başarıyla oluşturuldu!\nTakip Numaranız: %s", talepNo);
+    //         return stepContext.getContext().sendActivity(MessageFactory.text(successMessage))
+    //                 .thenCompose(result -> stepContext.next(talepNo));
+    //     } else {
+    //         return stepContext.getContext().sendActivity(MessageFactory.text("Talep iptal edildi."))
+    //                 .thenCompose(result -> stepContext.endDialog());
+    //     }
+    // }
 
-    private CompletableFuture<DialogTurnResult> processTalepStep(WaterfallStepContext stepContext) {
-        try {
-            String talepNo = null;
-            Object stepResult = stepContext.getResult();
+    // private CompletableFuture<DialogTurnResult> processTalepStep(WaterfallStepContext stepContext) {
+    //     try {
+    //         String talepNo = null;
+    //         Object stepResult = stepContext.getResult();
 
-            if (stepResult instanceof String) {
-                talepNo = (String) stepResult;
-            } else {
-                talepNo = (String) stepContext.getValues().get("talepNo");
-            }
+    //         if (stepResult instanceof String) {
+    //             talepNo = (String) stepResult;
+    //         } else {
+    //             talepNo = (String) stepContext.getValues().get("talepNo");
+    //         }
 
-            if (talepNo == null) {
-                // Talep iptal edilmiş veya hata oluşmuş
-                return stepContext.endDialog();
-            }
+    //         if (talepNo == null) {
+    //             // Talep iptal edilmiş veya hata oluşmuş
+    //             return stepContext.endDialog();
+    //         }
 
-            Activity successMessage = MessageFactory.text(String.format(
-                    "✅ Talebiniz başarıyla oluşturuldu!\n\n🔢 Takip Numaranız: %s\n\n📱 Talebinizi web sitemizden veya mobil uygulamamızdan takip edebilirsiniz.", talepNo));
+    //         Activity successMessage = MessageFactory.text(String.format(
+    //                 "✅ Talebiniz başarıyla oluşturuldu!\n\n🔢 Takip Numaranız: %s\n\n📱 Talebinizi web sitemizden veya mobil uygulamamızdan takip edebilirsiniz.", talepNo));
 
-            return stepContext.getContext().sendActivity(successMessage)
-                    .thenCompose(sendResult -> stepContext.endDialog());
+    //         return stepContext.getContext().sendActivity(successMessage)
+    //                 .thenCompose(sendResult -> stepContext.endDialog());
 
-        } catch (Exception ex) {
-            return stepContext.getContext().sendActivity(MessageFactory.text("İşleminiz tamamlanamadı. Lütfen tekrar deneyin."))
-                    .thenCompose(sendResult -> stepContext.endDialog());
-        }
-    }
+    //     } catch (Exception ex) {
+    //         return stepContext.getContext().sendActivity(MessageFactory.text("İşleminiz tamamlanamadı. Lütfen tekrar deneyin."))
+    //                 .thenCompose(sendResult -> stepContext.endDialog());
+    //     }
+    // }
 
     private CompletableFuture<DialogTurnResult> finalStep(WaterfallStepContext stepContext) {
         return stepContext.endDialog();
@@ -457,7 +435,7 @@ public class EchoBot extends ActivityHandler {
                     .thenCompose(result -> conversationState.saveChanges(turnContext))
                     .thenCompose(result -> userState.saveChanges(turnContext))
                     .exceptionally(ex -> {
-                        turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Ana menüye yönlendiriliyorsunuz...")).join();
+                        turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Ana menüye yönlendiriliyorsunuz..."+ex)).join();
                         dialogContext.beginDialog(MENU_DIALOG_ID).join();
                         return null;
                     });
@@ -650,13 +628,13 @@ public class EchoBot extends ActivityHandler {
 
         return card.toAttachment();
     }
-   
 
 
-  
 
 
- 
+
+
+
 
     private CompletableFuture<DialogTurnResult> showFaturaOptionsStep(WaterfallStepContext stepContext) {
         List<Choice> choices = Arrays.stream(FaturaOption.values())
@@ -692,6 +670,7 @@ public class EchoBot extends ActivityHandler {
             return stepContext.next(null);
 
         } catch (Exception ex) {
+            logger.error("Error in handleFaturaSelectionStep", ex);
             return stepContext.endDialog();
         }
     }

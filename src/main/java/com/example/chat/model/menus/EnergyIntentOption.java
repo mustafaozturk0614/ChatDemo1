@@ -1,7 +1,4 @@
-package com.example.chat.model;
-
-import com.example.chat.model.DialogType;
-import com.example.chat.model.IntentMenuOption;
+package com.example.chat.model.menus;
 
 public enum EnergyIntentOption implements IntentMenuOption {
     CONSUMPTION_ANALYSIS("📊 Tüketim Analizi", "ConsumptionAnalysisIntent", DialogType.INTENT_DIALOG),

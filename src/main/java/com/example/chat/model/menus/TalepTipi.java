@@ -1,4 +1,4 @@
-package com.example.chat.model;
+package com.example.chat.model.menus;
 
 public enum TalepTipi implements DialogMenuOption {
     ARIZA("Arıza Bildirimi"),
@@ -25,5 +25,14 @@ public enum TalepTipi implements DialogMenuOption {
     @Override
     public String getDialogId() {
         return "";
+    }
+
+    public static TalepTipi fromDisplayText(String displayText) {
+        for (TalepTipi talepTipi : TalepTipi.values()) {
+            if (talepTipi.getDisplayText().equalsIgnoreCase(displayText)) {
+                return talepTipi;
+            }
+        }
+        throw new IllegalArgumentException("Geçersiz talep tipi: " + displayText);
     }
 }

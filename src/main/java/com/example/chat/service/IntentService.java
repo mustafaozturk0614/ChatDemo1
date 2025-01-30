@@ -44,6 +44,7 @@ public class IntentService {
             HttpRequest request = createHttpRequest(requestBody);
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("Response: " + response.body());
             return extractTopIntent(response.body());
         } catch (Exception e) {
             logger.error("Failed to detect intent for query: {}", query, e);
@@ -87,11 +88,13 @@ public class IntentService {
     private String extractTopIntent(String responseBody) {
         try {
             JsonNode rootNode = objectMapper.readTree(responseBody);
-            return rootNode
+            String result=rootNode
                     .path("result")
                     .path("prediction")
                     .path("topIntent")
                     .asText("None");
+            System.out.println("Top intent: " + result);
+            return result;
         } catch (Exception e) {
             logger.error("Failed to extract top intent from response: {}", responseBody, e);
             throw new IntentServiceException("Failed to extract top intent", e);

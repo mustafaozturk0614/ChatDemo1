@@ -460,6 +460,7 @@ public class EchoBot extends ActivityHandler {
         if (intent == null || intent.equals("None")) {
             return dialogContext.beginDialog("menuDialog");
         }
+
         switch (intent) {
             case "LastUnpaidBillIntent":
                 return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız gösteriliyor..."))
@@ -470,6 +471,24 @@ public class EchoBot extends ActivityHandler {
             case "PaidBillsIntent":
                 Attachment faturaCard = createGecmisFaturalarCard();
                 return dialogContext.getContext().sendActivity(MessageFactory.attachment(faturaCard))
+                        .thenCompose(result -> dialogContext.endDialog());
+            case "EnergySavingTipsIntent":
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Enerji tasarrufu ipuçları:\n\n" +
+                        "1. Aydınlatmada LED ampuller kullanın.\n" +
+                        "2. Elektrikli cihazları bekleme modunda bırakmayın.\n" +
+                        "3. Klimaları 24-26°C arasında kullanın.\n" +
+                        "4. Buzdolabınızı güneş almayan bir yere yerleştirin.\n" +
+                        "5. Çamaşır makinesini tam dolu çalıştırın."))
+                        .thenCompose(result -> dialogContext.endDialog());
+            case "ConsumptionAnalysisIntent":
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Tüketim analiziniz:\n\n" +
+                        "⚡ Son 3 aylık ortalama tüketim: 250 kWh\n" +
+                        "📊 Geçen aya göre değişim: %5 azalma\n" +
+                        "🌍 Çevreye katkınız: 120 kg CO2 tasarrufu\n" +
+                        "💡 Öneri: Tüketiminizi düşürmek için enerji tasarrufu ipuçlarını inceleyin."))
+                        .thenCompose(result -> dialogContext.endDialog());
+            case "SupportRequestIntent":
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Destek talebiniz alındı. En kısa sürede dönüş yapılacaktır."))
                         .thenCompose(result -> dialogContext.endDialog());
             default:
                 return dialogContext.getContext().sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))

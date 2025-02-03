@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import com.example.chat.dialogs.*;
 import com.example.chat.model.menus.*;
@@ -233,17 +234,25 @@ public class EchoBot extends ActivityHandler {
         try {
             DialogContext dialogContext = dialogs.createContext(turnContext).join();
             String userMessage = turnContext.getActivity().getText();
-            System.out.println("userMessage: " + userMessage);
+
+            // Dil algılama ve çeviri işlemi
+            String detectedLanguage = intentService.detectLanguage(userMessage);
+
+
             return dialogContext.continueDialog()
                     .thenCompose(dialogTurnResult -> {
+                        String processedMessage=userMessage;
                         MenuOptionInterface selectedOption = findMenuOption(userMessage);
                         if(selectedOption==null) {
                             dialogTurnResult.setStatus(DialogTurnStatus.EMPTY);
+                            if (!"en".equals(detectedLanguage)) {
+                                processedMessage=(intentService.translateToEnglish(userMessage, "en"));
+                            }
                         }
+                        System.out.println("userMessage: " + processedMessage);
                         if (dialogTurnResult.getStatus() == DialogTurnStatus.EMPTY ||
                                 dialogTurnResult.getStatus() == DialogTurnStatus.COMPLETE) {
-                            return handleUserMessage(turnContext, selectedOption, userMessage);
-                          //  return dialogContext.beginDialog("menuDialog");
+                            return handleUserMessage(turnContext, selectedOption, processedMessage);
                         }
                         return CompletableFuture.completedFuture(dialogTurnResult);
                     })
@@ -256,27 +265,52 @@ public class EchoBot extends ActivityHandler {
                     });
 
         } catch (Exception ex) {
+            ex.printStackTrace();
             turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin.")).join();
             return CompletableFuture.completedFuture(null);
         }
     }
 
-    private CompletableFuture<DialogTurnResult> handleUserMessage(TurnContext turnContext, MenuOptionInterface selectedOption,String userMessage ) {
+    private CompletableFuture<DialogTurnResult> handleUserMessage(TurnContext turnContext, MenuOptionInterface selectedOption, String userMessage) {
         try {
             DialogContext dialogContext = dialogs.createContext(turnContext).join();
             if (selectedOption == null) {
+                // Intent tespiti yap
                 String detectedIntent = intentService.detectIntent(userMessage);
-                return handleDetectedIntent(dialogContext, detectedIntent);
+                CompletableFuture<DialogTurnResult> res = handleDetectedIntent(dialogContext, detectedIntent);
 
+                return res.thenCompose(response -> {
+                    if (response == null || response.getResult() == null) {
+                        // Eğer bir sonuç yoksa veya hata olduysa, ana menüye yönlendir
+                        return turnContext.sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin. Ana menüye yönlendiriliyorsunuz."))
+                                .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                    }
+                    String responseText = response.getResult().toString();
+
+                    // Yanıtı Türkçeye çevir (eğer gerekliyse)
+                    if (!"tr".equals(intentService.detectLanguage(responseText))) {
+                        responseText = intentService.translateToEnglish(responseText, "tr");
+                    }
+                    if (response.getStatus() == DialogTurnStatus.COMPLETE) {
+                        return CompletableFuture.completedFuture(response);
+                    }
+                    // Kullanıcıya dönecek cevabı al
+
+
+                    // Mesajı gönder ve diyalogu tamamla
+                    return turnContext.sendActivity(MessageFactory.text(responseText))
+                            .thenApply(resultActivity -> response);
+                });
             }
-            return handleSelectedOption(dialogContext, selectedOption);
 
+            // Seçili menü opsiyonunu işle
+            return handleSelectedOption(dialogContext, selectedOption);
         } catch (Exception ex) {
             logger.error("Kullanıcı mesajı işlenirken hata oluştu", ex);
-            return turnContext.sendActivity(MessageFactory.text("Bir hata oluştu. Lütfen tekrar deneyin."))
-                    .thenCompose(result -> CompletableFuture.completedFuture(null));
+            return CompletableFuture.completedFuture(null);
         }
     }
+
 
     private MenuOptionInterface findMenuOption(String userMessage) {
         return Stream.of(
@@ -305,8 +339,10 @@ public class EchoBot extends ActivityHandler {
     private CompletableFuture<DialogTurnResult> handleDetectedIntent(DialogContext dialogContext, String intent) {
         Long userId = 1L; // Kullanıcı ID'sini dinamik olarak alın
 
+
         if (intent == null || intent.equals("None")) {
-            return dialogContext.beginDialog(MENU_DIALOG_ID);
+            return dialogContext.getContext().sendActivity(MessageFactory.text("Ne yapmak istediğinizi anlayamadım. Ana menüye yönlendiriliyorsunuz."))
+                    .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
         }
 
         switch (intent) {
@@ -323,18 +359,11 @@ public class EchoBot extends ActivityHandler {
             case "SupportRequestIntent":
                 return supportRequestService.handleSupportRequest(userId, dialogContext);
             default:
-                return dialogContext.getContext().sendActivity(MessageFactory.text("Anlayamadım, lütfen tekrar deneyin."))
+                return dialogContext.getContext().sendActivity(MessageFactory.text("Bu isteği anlayamadım. Ana menüye yönlendiriliyorsunuz."))
                         .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
         }
 
     }
-
-
-
-
-
-
-
 
 
 

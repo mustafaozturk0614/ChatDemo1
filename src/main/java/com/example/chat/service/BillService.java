@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.DialogTurnStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -44,9 +45,13 @@ public class BillService {
                 .thenCompose(bills -> {
                     if (!bills.isEmpty()) {
                         Bill lastBill = bills.get(0);
-
                         return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız: " + lastBill.getBillNumber() + " - " + lastBill.getAmount() + " TL"))
-                                .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                                .thenCompose(result -> {
+                                    // Yeni bir DialogTurnResult oluştur ve dön
+                                    DialogTurnResult dialogResult = new DialogTurnResult(DialogTurnStatus.COMPLETE);
+                                    dialogResult.setResult("Son ödenmemiş faturanız: " + lastBill.getBillNumber() + " - " + lastBill.getAmount() + " TL");
+                                    return CompletableFuture.completedFuture(dialogResult);
+                                });
                     } else {
                         return dialogContext.getContext().sendActivity(MessageFactory.text("Ödenmemiş faturanız bulunmamaktadır."))
                                 .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));

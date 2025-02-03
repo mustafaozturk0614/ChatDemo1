@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.DialogTurnStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,13 +34,16 @@ public class EnergySavingTipService {
     }
 
     public CompletableFuture<DialogTurnResult> showEnergySavingTips(DialogContext dialogContext) {
+        // Sabit bir enerji tasarruf ipucu listesi
         String tips = "Enerji tasarrufu ipuçları:\n\n" +
                 "1. Aydınlatmada LED ampuller kullanın.\n" +
                 "2. Elektrikli cihazları bekleme modunda bırakmayın.\n" +
                 "3. Klimaları 24-26°C arasında kullanın.\n" +
                 "4. Buzdolabınızı güneş almayan bir yere yerleştirin.\n" +
                 "5. Çamaşır makinesini tam dolu çalıştırın.";
+
         return dialogContext.getContext().sendActivity(MessageFactory.text(tips))
-                .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                .thenApply(result -> new DialogTurnResult(DialogTurnStatus.COMPLETE, tips));
     }
+
 } 

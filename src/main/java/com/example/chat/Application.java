@@ -57,15 +57,9 @@ public class Application extends BotDependencyConfiguration {
         return new ConversationState(storage);
     }
 
-    @Bean
-    public EnergyDialog energyDialog(EnergyConsumptionService energyConsumptionService) {
-        return new EnergyDialog(energyConsumptionService);
-    }
 
-    @Bean
-    public SupportDialog supportDialog(SupportRequestService supportRequestService) {
-        return new SupportDialog(supportRequestService);
-    }
+
+
 
     @Bean
     @Primary
@@ -84,8 +78,8 @@ public class Application extends BotDependencyConfiguration {
      * @return The Bot implementation for this application.
      */
     @Bean
-    public Bot getBot(ConversationState conversationState, UserState userState, EnergyDialog energyDialog, SupportDialog supportDialog) {
-        return new EchoBot(conversationState, userState, energyDialog, supportDialog);
+    public Bot getBot(ConversationState conversationState, UserState userState) {
+        return new EchoBot(conversationState, userState);
     }
 
     /**

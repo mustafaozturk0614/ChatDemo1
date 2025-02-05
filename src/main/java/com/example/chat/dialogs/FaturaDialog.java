@@ -55,6 +55,7 @@ public class FaturaDialog extends ComponentDialog {
 
     private CompletableFuture<DialogTurnResult> handleFaturaSelectionStep(WaterfallStepContext stepContext) {
         FoundChoice choice = (FoundChoice) stepContext.getResult();
+        System.out.println(stepContext.getOptions());
         String selection = choice.getValue();
 
         if (selection.equals("Fatura Sorgula")) {
@@ -64,13 +65,11 @@ public class FaturaDialog extends ComponentDialog {
             PromptOptions promptOptions = new PromptOptions();
             promptOptions.setPrompt(MessageFactory.text(faturaDetay));
             promptOptions.setChoices(Arrays.asList(new Choice("Evet"), new Choice("Hayır"))); // Evet/Hayır seçenekleri
-
             return stepContext.prompt(CONFIRM_PROMPT, promptOptions);
-        } else if (selection.equals("Geri")) {
+        } else {
             return stepContext.endDialog();
         }
 
-        return stepContext.next(null);
     }
 
     private CompletableFuture<DialogTurnResult> confirmFaturaOdemeStep(WaterfallStepContext stepContext) {

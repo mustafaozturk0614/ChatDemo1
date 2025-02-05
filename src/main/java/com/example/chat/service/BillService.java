@@ -1,23 +1,28 @@
 package com.example.chat.service;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
+import com.example.chat.utils.DialogUtils;
+import com.microsoft.bot.dialogs.Dialog;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import static com.example.chat.EchoBot.MENU_DIALOG_ID;
+import com.example.chat.entity.Bill;
+import com.example.chat.enums.BillStatus;
+import com.example.chat.repository.BillRepository;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
 import com.microsoft.bot.dialogs.DialogTurnStatus;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import com.example.chat.entity.Bill;
-import com.example.chat.enums.BillStatus;
-import com.example.chat.repository.BillRepository;
-
-import static com.example.chat.EchoBot.MENU_DIALOG_ID;
 
 @Service
 public class BillService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BillService.class);
 
     @Autowired
     private BillRepository billRepository;
@@ -41,23 +46,29 @@ public class BillService {
 
 
     public CompletableFuture<DialogTurnResult> handleLastUnpaidBill(Long userId, DialogContext dialogContext) {
-        return CompletableFuture.supplyAsync(() -> billRepository.findByUserId(userId))
+        return CompletableFuture.supplyAsync(() -> billRepository.findFirstByUserIdAndStatusOrderByDueDateDesc(userId,BillStatus.UNPAID))
                 .thenCompose(bills -> {
-                    if (!bills.isEmpty()) {
-                        Bill lastBill = bills.get(0);
-                        return dialogContext.getContext().sendActivity(MessageFactory.text("Son ödenmemiş faturanız: " + lastBill.getBillNumber() + " - " + lastBill.getAmount() + " TL"))
-                                .thenCompose(result -> {
-                                    // Yeni bir DialogTurnResult oluştur ve dön
-                                    DialogTurnResult dialogResult = new DialogTurnResult(DialogTurnStatus.COMPLETE);
-                                    dialogResult.setResult("Son ödenmemiş faturanız: " + lastBill.getBillNumber() + " - " + lastBill.getAmount() + " TL");
-                                    return CompletableFuture.completedFuture(dialogResult);
-                                });
-                    } else {
-                        return dialogContext.getContext().sendActivity(MessageFactory.text("Ödenmemiş faturanız bulunmamaktadır."))
-                                .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                    if (bills.isEmpty()) {
+                        return DialogUtils.sendMessageAndReturn(dialogContext, "Ödenmemiş faturanız bulunmamaktadır.",MENU_DIALOG_ID);
                     }
-                });
+
+                    Bill lastBill = bills.get();
+                    String message = String.format("Son ödenmemiş faturanız: %s - %s TL", lastBill.getBillNumber(), lastBill.getAmount());
+                    return DialogUtils.sendMessageAndReturn(dialogContext, message,MENU_DIALOG_ID);
+                })
+                .handle((result, ex) -> {
+                    if (ex != null) {
+                        logger.error("Fatura alınırken hata oluştu: ", ex);
+                        return DialogUtils.sendErrorMessageAndReturn(dialogContext, "Fatura alınırken hata olştu. Lütfen tekrar deneyin.",MENU_DIALOG_ID);
+                    }
+                    return CompletableFuture.completedFuture(result);
+                })
+                .thenCompose(future -> future);
     }
+
+
+
+
     public CompletableFuture<DialogTurnResult> handleAllUnpaidBills(Long userId, DialogContext dialogContext) {
         return CompletableFuture.supplyAsync(() -> billRepository.findByUserIdAndStatus(userId, BillStatus.UNPAID))
                 .thenCompose(bills -> {
@@ -69,9 +80,6 @@ public class BillService {
                     } else {
                         response.append("Ödenmemiş faturanız bulunmamaktadır.");
                     }
-                    return dialogContext.getContext().sendActivity(MessageFactory.text(response.toString()))
-                            .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                    return DialogUtils.sendMessageAndReturn(dialogContext, response.toString(),MENU_DIALOG_ID);
                 });
-    }
-
-} 
+    }}

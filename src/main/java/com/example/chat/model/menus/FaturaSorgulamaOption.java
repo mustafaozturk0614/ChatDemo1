@@ -17,6 +17,15 @@ public enum FaturaSorgulamaOption implements IntentMenuOption {
         this.dialogType = dialogType;
     }
 
+    public static FaturaSorgulamaOption fromDisplayText(String value) {
+        for (FaturaSorgulamaOption option : values()) {
+            if (option.getDisplayText().equals(value)) {
+                return option;
+            }
+        }
+        return null;
+    }
+
     public String getDisplayText() {
         return displayText;
     }

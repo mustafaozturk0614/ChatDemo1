@@ -1,6 +1,8 @@
 package com.example.chat.dialogs;
 
+import com.example.chat.entity.Bill;
 import com.example.chat.model.menus.FaturaSorgulamaOption;
+import com.example.chat.service.IntentService;
 import com.microsoft.bot.dialogs.*;
 import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
 import com.microsoft.bot.dialogs.prompts.PromptOptions;
@@ -11,21 +13,24 @@ import com.microsoft.bot.schema.ActionTypes;
 import com.microsoft.bot.schema.Activity;
 import com.microsoft.bot.schema.CardAction;
 import com.microsoft.bot.schema.SuggestedActions;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class FaturaSorgulamaDialog extends ComponentDialog {
     private static final String FATURA_SORGULAMA_PROMPT = "faturaSorgulamaPrompt";
-
+   
     public FaturaSorgulamaDialog(String dialogId) {
         super(dialogId);
 
         // Waterfall adımlarını tanımla
         WaterfallStep[] waterfallSteps = new WaterfallStep[] {
             this::handleFaturaSorgulamaStep
+            , this::processSelectionStep
         };
 
         // WaterfallDialog'u ekle
@@ -55,4 +60,13 @@ public class FaturaSorgulamaDialog extends ComponentDialog {
         promptOptions.setChoices(choices);
 
         return stepContext.prompt("faturaSorgulamaPrompt", promptOptions);
-} }
+}
+
+    private CompletableFuture<DialogTurnResult> processSelectionStep(WaterfallStepContext stepContext) {
+        FoundChoice choice = (FoundChoice) stepContext.getResult();
+        FaturaSorgulamaOption selectedOption = FaturaSorgulamaOption.fromDisplayText(choice.getValue());
+        return stepContext.getContext().sendActivity(
+                MessageFactory.text(selectedOption.getIntentName())
+        ).thenCompose(res ->stepContext.endDialog(selectedOption));
+    }
+}

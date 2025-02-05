@@ -1,5 +1,7 @@
 package com.example.chat.dialogs;
 
+import com.example.chat.model.menus.FaturaOption;
+import com.example.chat.model.menus.SupportOption;
 import com.example.chat.service.SupportRequestService;
 import com.microsoft.bot.dialogs.ComponentDialog;
 import com.microsoft.bot.dialogs.WaterfallDialog;
@@ -15,14 +17,13 @@ import com.microsoft.bot.dialogs.prompts.PromptOptions;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class SupportDialog extends ComponentDialog {
-    private final SupportRequestService supportRequestService;
 
-    public SupportDialog(SupportRequestService supportRequestService) {
-        super("supportDialog");
-        this.supportRequestService = supportRequestService;
 
+    public SupportDialog(String dialogId) {
+        super(dialogId);
         addDialog(new WaterfallDialog("supportWaterfall", Arrays.asList(
             this::showSupportOptionsStep,
             this::handleSupportOptionStep,
@@ -36,12 +37,9 @@ public class SupportDialog extends ComponentDialog {
         String promptMessage = "Destek talep etmek için lütfen bir seçenek belirleyin:";
         PromptOptions promptOptions = new PromptOptions();
         promptOptions.setPrompt(MessageFactory.text(promptMessage));
-        promptOptions.setChoices(Arrays.asList(
-            new Choice("Genel Bilgi"),
-            new Choice("Teknik Destek"),
-            new Choice("Şikayet"),
-            new Choice("Geri Dön")
-        ));
+        promptOptions.setChoices( Arrays.stream(SupportOption.values())
+                .map(option -> new Choice(option.getDisplayText()))
+                .collect(Collectors.toList()));
 
         return stepContext.prompt("supportPrompt", promptOptions);
     }

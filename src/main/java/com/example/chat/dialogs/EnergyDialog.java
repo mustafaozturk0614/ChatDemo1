@@ -24,12 +24,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class EnergyDialog extends ComponentDialog {
-    private final EnergyConsumptionService energyConsumptionService;
 
-    public EnergyDialog(EnergyConsumptionService energyConsumptionService) {
-        super("energyDialog");
-        this.energyConsumptionService = energyConsumptionService;
-
+    public EnergyDialog(String dialogId) {
+        super(dialogId);
         addDialog(new WaterfallDialog("energyWaterfall", Arrays.asList(
             this::showEnergyOptionsStep,
             this::finalStep

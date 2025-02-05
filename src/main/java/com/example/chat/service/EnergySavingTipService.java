@@ -3,6 +3,7 @@ package com.example.chat.service;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import com.example.chat.utils.DialogUtils;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -42,8 +43,8 @@ public class EnergySavingTipService {
                 "4. Buzdolabınızı güneş almayan bir yere yerleştirin.\n" +
                 "5. Çamaşır makinesini tam dolu çalıştırın.";
 
-        return dialogContext.getContext().sendActivity(MessageFactory.text(tips))
-                .thenApply(result -> new DialogTurnResult(DialogTurnStatus.COMPLETE, tips));
+        return DialogUtils.sendMessageAndReturn(dialogContext, tips, MENU_DIALOG_ID).toCompletableFuture();
+
     }
 
 } 

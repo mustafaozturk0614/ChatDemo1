@@ -3,6 +3,7 @@ package com.example.chat.service;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import com.example.chat.utils.DialogUtils;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -27,8 +28,7 @@ public class SupportRequestService {
         supportRequest.setDescription("Destek talebi alındı.");
         saveSupportRequest(supportRequest);
 
-        return dialogContext.getContext().sendActivity(MessageFactory.text("Destek talebiniz alındı. En kısa sürede dönüş yapılacaktır."))
-                .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+        return DialogUtils.sendMessageAndReturn(dialogContext, "Destek talebiniz alındı. En kısa zamanda cevap verecegiz.",MENU_DIALOG_ID).toCompletableFuture();
     }
 
     public SupportRequest saveSupportRequest(SupportRequest supportRequest) {

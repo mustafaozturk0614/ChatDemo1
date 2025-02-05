@@ -9,12 +9,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Long> {
     List<Bill> findByUserId(Long userId);
     List<Bill> findByUserIdAndStatus(Long userId, BillStatus status);
-    
+    Optional<Bill> findFirstByUserIdAndStatusOrderByDueDateDesc(Long userId, BillStatus status);
     // Yıllık ödemeleri toplamak için
     @Query("SELECT SUM(b.amount) FROM Bill b WHERE b.userId = :userId AND YEAR(b.dueDate) = YEAR(CURRENT_DATE)")
     Double findTotalAnnualPaymentsByUserId(@Param("userId") Long userId);

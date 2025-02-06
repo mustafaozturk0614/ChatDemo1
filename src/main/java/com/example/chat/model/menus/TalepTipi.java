@@ -17,14 +17,6 @@ public enum TalepTipi implements MenuOptionInterface {
         this.dialogType = dialogType;
     }
 
-    public static TalepTipi fromDisplayText(String displayText) {
-        for (TalepTipi talepTipi : TalepTipi.values()) {
-            if (talepTipi.getDisplayText().equalsIgnoreCase(displayText)) {
-                return talepTipi;
-            }
-        }
-        throw new IllegalArgumentException("Geçersiz talep tipi: " + displayText);
-    }
 
 
 }

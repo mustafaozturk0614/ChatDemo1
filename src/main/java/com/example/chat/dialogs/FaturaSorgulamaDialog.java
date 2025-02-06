@@ -1,9 +1,13 @@
 package com.example.chat.dialogs;
 
+import com.example.chat.constants.CentralizedConstants;
 import com.example.chat.entity.Bill;
+import com.example.chat.model.menus.EnergyIntentOption;
 import com.example.chat.model.menus.FaturaSorgulamaOption;
 import com.example.chat.service.IntentService;
+import com.example.chat.utils.DialogUtils;
 import com.microsoft.bot.dialogs.*;
+import com.microsoft.bot.dialogs.choices.ListStyle;
 import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
 import com.microsoft.bot.dialogs.prompts.PromptOptions;
 import com.microsoft.bot.builder.MessageFactory;
@@ -21,8 +25,10 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import static com.example.chat.constants.CentralizedConstants.FATURA_SORGULAMA_PROMPT;
+
 public class FaturaSorgulamaDialog extends ComponentDialog {
-    private static final String FATURA_SORGULAMA_PROMPT = "faturaSorgulamaPrompt";
+
    
     public FaturaSorgulamaDialog(String dialogId) {
         super(dialogId);
@@ -40,33 +46,17 @@ public class FaturaSorgulamaDialog extends ComponentDialog {
     }
 
     private CompletableFuture<DialogTurnResult> handleFaturaSorgulamaStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.stream(FaturaSorgulamaOption.values())
-                .map(option -> new Choice(option.getDisplayText()))
-                .collect(Collectors.toList());
 
-        Activity faturaSorgulamaMessage = MessageFactory.text("Fatura sorgulama işlemleriniz için hangi seçeneği tercih edersiniz?");
-        faturaSorgulamaMessage.setSuggestedActions(new SuggestedActions() {{
-            setActions(choices.stream()
-                    .map(choice -> new CardAction() {{
-                        setTitle(choice.getValue());
-                        setValue(choice.getValue());
-                        setType(ActionTypes.POST_BACK);
-                    }})
-                    .collect(Collectors.toList()));
-        }});
+        return   DialogUtils.showDynamicMenu(stepContext, "Enerji yönetimi menüsüne hoş geldiniz. Lütfen bir seçenek belirleyin.", FaturaSorgulamaOption.class, CentralizedConstants.FATURA_PROMPT, ListStyle.SUGGESTED_ACTION);
 
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(faturaSorgulamaMessage);
-        promptOptions.setChoices(choices);
-
-        return stepContext.prompt("faturaSorgulamaPrompt", promptOptions);
 }
 
     private CompletableFuture<DialogTurnResult> processSelectionStep(WaterfallStepContext stepContext) {
-        FoundChoice choice = (FoundChoice) stepContext.getResult();
-        FaturaSorgulamaOption selectedOption = FaturaSorgulamaOption.fromDisplayText(choice.getValue());
-        return stepContext.getContext().sendActivity(
-                MessageFactory.text(selectedOption.getIntentName())
-        ).thenCompose(res ->stepContext.endDialog(selectedOption));
+      return    DialogUtils.processSelectionStep(stepContext, FaturaSorgulamaOption.class);
+//        FoundChoice choice = (FoundChoice) stepContext.getResult();
+//        FaturaSorgulamaOption selectedOption = FaturaSorgulamaOption.fromDisplayText(choice.getValue());
+//        return stepContext.getContext().sendActivity(
+//                MessageFactory.text(selectedOption.getIntentName())
+//        ).thenCompose(res ->stepContext.endDialog(selectedOption));
     }
 }

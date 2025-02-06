@@ -1,17 +1,18 @@
 package com.example.chat.dialogs;
 
+import com.example.chat.constants.CentralizedConstants;
 import com.example.chat.model.menus.FaturaOption;
+import com.example.chat.model.menus.MenuOption;
 import com.example.chat.model.menus.SupportOption;
 import com.example.chat.service.SupportRequestService;
-import com.microsoft.bot.dialogs.ComponentDialog;
-import com.microsoft.bot.dialogs.WaterfallDialog;
-import com.microsoft.bot.dialogs.WaterfallStep;
+import com.example.chat.utils.DialogUtils;
+import com.example.chat.utils.MenuMatcher;
+import com.microsoft.bot.dialogs.*;
 
-import com.microsoft.bot.dialogs.DialogTurnResult;
-import com.microsoft.bot.dialogs.WaterfallStepContext;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.choices.Choice;
 import com.microsoft.bot.dialogs.choices.FoundChoice;
+import com.microsoft.bot.dialogs.choices.ListStyle;
 import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
 import com.microsoft.bot.dialogs.prompts.PromptOptions;
 
@@ -26,6 +27,7 @@ public class SupportDialog extends ComponentDialog {
         super(dialogId);
         addDialog(new WaterfallDialog("supportWaterfall", Arrays.asList(
             this::showSupportOptionsStep,
+            this::handleSupport,
             this::handleSupportOptionStep,
             this::finalStep
         )));
@@ -34,31 +36,25 @@ public class SupportDialog extends ComponentDialog {
     }
 
     private CompletableFuture<DialogTurnResult> showSupportOptionsStep(WaterfallStepContext stepContext) {
-        String promptMessage = "Destek talep etmek için lütfen bir seçenek belirleyin:";
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(MessageFactory.text(promptMessage));
-        promptOptions.setChoices( Arrays.stream(SupportOption.values())
-                .map(option -> new Choice(option.getDisplayText()))
-                .collect(Collectors.toList()));
-
-        return stepContext.prompt("supportPrompt", promptOptions);
+        return DialogUtils.showDynamicMenu(stepContext,"Destek talep etmek için lütfen bir seçenek belirleyin:", SupportOption.class, "supportPrompt", ListStyle.SUGGESTED_ACTION);
     }
-
+    private CompletableFuture<DialogTurnResult> handleSupport(WaterfallStepContext waterfallStepContext) {
+        return CompletableFuture.completedFuture(new DialogTurnResult(DialogTurnStatus.WAITING)).thenCompose(res->waterfallStepContext.next(waterfallStepContext.getResult()));
+    }
     private CompletableFuture<DialogTurnResult> handleSupportOptionStep(WaterfallStepContext stepContext) {
-        String selectedOption = ((FoundChoice) stepContext.getResult()).getValue();
 
-        switch (selectedOption) {
-            case "Genel Bilgi":
-                return handleGeneralInquiry(stepContext);
-            case "Teknik Destek":
-                return handleTechnicalSupport(stepContext);
-            case "Şikayet":
-                return handleComplaint(stepContext);
-            case "Geri Dön":
-                return stepContext.endDialog();
-            default:
-                return stepContext.endDialog();
-        }
+        return CompletableFuture.completedFuture(new DialogTurnResult(DialogTurnStatus.WAITING))
+                .thenCompose(result -> {
+                    FoundChoice choice = (FoundChoice) stepContext.getResult();
+                    SupportOption selectedOption = MenuMatcher.fromDisplayText(choice.getValue(), SupportOption.class);
+                    return switch (selectedOption) {
+                        case GENERAL_INQUIRY -> handleGeneralInquiry(stepContext);
+                        case TECHNICAL_SUPPORT -> handleTechnicalSupport(stepContext);
+                        case COMPLAINT -> handleComplaint(stepContext);
+                        case GERI -> stepContext.replaceDialog(CentralizedConstants.MENU_DIALOG_ID);
+                        default -> stepContext.endDialog();
+                    };
+                });
     }
 
     private CompletableFuture<DialogTurnResult> handleGeneralInquiry(WaterfallStepContext stepContext) {

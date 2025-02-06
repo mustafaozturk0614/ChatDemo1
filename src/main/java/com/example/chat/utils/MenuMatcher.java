@@ -3,6 +3,7 @@ package com.example.chat.utils;
 import com.example.chat.model.menus.*;
 import com.microsoft.bot.dialogs.DialogContext;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -59,5 +60,17 @@ String currentDialogId = context.getActiveDialog()==null?"menuDialog":context.ge
                 .replaceAll("\\s+", " ")
                 .toLowerCase(Locale.forLanguageTag("tr"))
                 .trim();
+    }
+
+    public static <T extends Enum<T> & MenuOptionInterface> T fromDisplayText(String displayText, Class<T> enumClass) {
+        return Arrays.stream(enumClass.getEnumConstants())
+                .filter(option -> option.getDisplayText().equalsIgnoreCase(displayText))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Geçersiz seçim: " + displayText));
+    }
+
+    public static <T extends Enum<T> & IntentMenuOption> T fromIntent(String intent,Class<T> enumClass) {
+        return   Arrays.stream(enumClass.getEnumConstants()).filter(option -> option.getIntentName().equalsIgnoreCase(intent)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Geçersiz seçim: " + intent));
     }
 }

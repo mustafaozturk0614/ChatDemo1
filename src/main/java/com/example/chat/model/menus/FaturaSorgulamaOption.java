@@ -1,6 +1,6 @@
 package com.example.chat.model.menus;
 
-public enum FaturaSorgulamaOption implements IntentMenuOption {
+public enum FaturaSorgulamaOption implements IntentMenuOption<FaturaSorgulamaOption> {
     SON_ODENMEMIS_FATURA("Son Ödenmemiş Fatura 📄", "LastUnpaidBillIntent", DialogType.INTENT_DIALOG),
     TUM_ODENMEMIS_FATURALAR("Tüm Ödenmemiş Faturalar 📑", "AllUnpaidBillsIntent", DialogType.INTENT_DIALOG),
     ODENMIS_FATURALAR("Ödenmiş Faturalar ✅", "PaidBillsIntent", DialogType.INTENT_DIALOG),
@@ -17,14 +17,6 @@ public enum FaturaSorgulamaOption implements IntentMenuOption {
         this.dialogType = dialogType;
     }
 
-    public static FaturaSorgulamaOption fromDisplayText(String value) {
-        for (FaturaSorgulamaOption option : values()) {
-            if (option.getDisplayText().equals(value)) {
-                return option;
-            }
-        }
-        return null;
-    }
 
     public String getDisplayText() {
         return displayText;
@@ -38,12 +30,10 @@ public enum FaturaSorgulamaOption implements IntentMenuOption {
         return dialogType;
     }
 
-    public static FaturaSorgulamaOption fromIntent(String intent) {
-        for (FaturaSorgulamaOption option : values()) {
-            if (option.getIntentName().equals(intent)) {
-                return option;
-            }
-        }
-        return GERI_DON; // Eğer intent bulunamazsa geri dön
+    @Override
+    public String getDialogId() {
+        return "";
     }
+
+
 }

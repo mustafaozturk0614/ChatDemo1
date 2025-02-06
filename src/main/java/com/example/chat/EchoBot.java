@@ -3,18 +3,15 @@
 
 package com.example.chat;
 
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
-import com.example.chat.utils.DialogUtils;
-import com.example.chat.utils.MenuMatcher;
-import com.microsoft.bot.dialogs.*;
-import com.microsoft.bot.schema.*;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import com.example.chat.constants.CentralizedConstants;
 import com.example.chat.dialogs.EnergyDialog;
 import com.example.chat.dialogs.FaturaDialog;
 import com.example.chat.dialogs.FaturaSorgulamaDialog;
@@ -22,27 +19,24 @@ import com.example.chat.dialogs.MenuDialog;
 import com.example.chat.dialogs.SupportDialog;
 import com.example.chat.dialogs.TalepDialog;
 import com.example.chat.model.menus.DialogMenuOption;
-import com.example.chat.model.menus.DialogType;
-import com.example.chat.model.menus.EnergyIntentOption;
-import com.example.chat.model.menus.FaturaOption;
-import com.example.chat.model.menus.FaturaSorgulamaOption;
 import com.example.chat.model.menus.IntentMenuOption;
-import com.example.chat.model.menus.MenuOption;
 import com.example.chat.model.menus.MenuOptionInterface;
-import com.example.chat.model.menus.SupportOption;
-import com.example.chat.service.BillService;
-import com.example.chat.service.EnergyConsumptionService;
-import com.example.chat.service.EnergySavingTipService;
 import com.example.chat.service.IntentService;
-import com.example.chat.service.PaymentService;
-import com.example.chat.service.SubscriptionService;
-import com.example.chat.service.SupportRequestService;
+import com.example.chat.utils.DialogUtils;
+import com.example.chat.utils.MenuMatcher;
 import com.microsoft.bot.builder.ActivityHandler;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.builder.StatePropertyAccessor;
 import com.microsoft.bot.builder.TurnContext;
 import com.microsoft.bot.builder.UserState;
+import com.microsoft.bot.dialogs.DialogContext;
+import com.microsoft.bot.dialogs.DialogSet;
+import com.microsoft.bot.dialogs.DialogState;
+import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.DialogTurnStatus;
+import com.microsoft.bot.schema.Activity;
+import com.microsoft.bot.schema.ChannelAccount;
 
 /**
  * This class implements the functionality of the Bot.
@@ -65,12 +59,12 @@ public class EchoBot extends ActivityHandler {
 
 
     // Dialog ID sabitleri
-    public static final String MENU_DIALOG_ID = "menuDialog";
-    public static final String TALEP_DIALOG_ID = "talepDialog";
-    public static final String FATURA_DIALOG_ID = "faturaDialog";
-    public static final String FATURA_SORGULAMA_DIALOG_ID = "faturaSorgulamaDialog";
-    public static final String ENERGY_DIALOG_ID = "energyDialog";
-    public static final String SUPPORT_DIALOG_ID = "supportDialog";
+    public static final String MENU_DIALOG_ID = CentralizedConstants.MENU_DIALOG_ID;
+    public static final String TALEP_DIALOG_ID = CentralizedConstants.TALEP_DIALOG_ID;
+    public static final String FATURA_DIALOG_ID = CentralizedConstants.FATURA_DIALOG_ID;
+    public static final String FATURA_SORGULAMA_DIALOG_ID = CentralizedConstants.FATURA_SORGULAMA_DIALOG_ID;
+    public static final String ENERGY_DIALOG_ID = CentralizedConstants.ENERGY_DIALOG_ID;
+    public static final String SUPPORT_DIALOG_ID = CentralizedConstants.SUPPORT_DIALOG_ID;
 
 
 
@@ -102,7 +96,6 @@ public class EchoBot extends ActivityHandler {
     protected CompletableFuture<Void> onMembersAdded(List<ChannelAccount> membersAdded, TurnContext turnContext) {
         // Hoş geldiniz mesajını ve menüyü tek bir activity içinde gönder
         Activity welcomeMessage = MessageFactory.text("Hoş geldiniz! Size nasıl yardımcı olabilirim?");
-
         return turnContext.sendActivity(welcomeMessage)
                 .thenCompose(res -> dialogs.createContext(turnContext))
                 .thenCompose(dialogContext -> {
@@ -124,13 +117,11 @@ public class EchoBot extends ActivityHandler {
         @Override
     protected CompletableFuture<Void> onMessageActivity(TurnContext turnContext) {
         try {
-
-            Activity activity = turnContext.getActivity();
         return   dialogs.createContext(turnContext).thenCompose(dialogContext->dialogContext.continueDialog().thenCompose(dialogTurnResult -> {
             String userMessage = turnContext.getActivity().getText().trim().toLowerCase(Locale.forLanguageTag("tr"));
             System.out.println("dialogTurnResult.getStatus(): " + dialogTurnResult.getStatus());
                 if (dialogContext.getChild()!=null&&dialogContext.getChild().getActiveDialog().getId().equals("menuPrompt")) {
-
+                    logger.warn("Dialog Child ID: " + dialogContext.getChild().getActiveDialog().getId());
                     return DialogUtils.saveContext(processUserInput(dialogContext,userMessage), userState, conversationState, turnContext);
                 }
             if (dialogTurnResult.getStatus() == DialogTurnStatus.COMPLETE) {
@@ -142,7 +133,7 @@ public class EchoBot extends ActivityHandler {
                 else  if (result instanceof MenuOptionInterface selectedOption) {
                     lastResult= processMenuOrIntent(dialogContext, selectedOption);
                 }
-                System.out.println(dialogContext.getActiveDialog());
+
                 return  DialogUtils.saveContext(lastResult, userState, conversationState, turnContext) ;
             }   System.out.println(dialogContext.getActiveDialog().getId());
             return DialogUtils.saveContext(CompletableFuture.completedFuture(null), userState, conversationState, turnContext);
@@ -159,15 +150,7 @@ public class EchoBot extends ActivityHandler {
 
 
     private CompletableFuture<Void> processUserInput(DialogContext dialogContext, String userMessage) {
-        // Menü kontrolü yap2
-        MenuOptionInterface selectedOption =  findMenuOption(userMessage, dialogContext);
-        if (selectedOption != null) {
-            return processMenuOrIntent(dialogContext, selectedOption).thenApply(result -> null);
-        }
-
-        // Menüye ait değilse, intent ve dil işleme
         String processedMessage = processMessageLanguage(userMessage);
-
         return intentService.processIntent(dialogContext, processedMessage).thenApply(result -> null);
     }
 

@@ -3,10 +3,11 @@ package com.example.chat.dialogs;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import com.example.chat.constants.CentralizedConstants;
 import com.example.chat.model.menus.MenuOption;
+import com.example.chat.utils.DialogUtils;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.ComponentDialog;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -26,8 +27,6 @@ import com.microsoft.bot.schema.SuggestedActions;
 
 
 public class MenuDialog extends ComponentDialog {
-    private static final String MENU_PROMPT = "menuPrompt";
-    private static final String WATERFALL_DIALOG = "menuWaterFall";
 
     public MenuDialog(String dialogId) {
         super(dialogId);
@@ -37,67 +36,35 @@ public class MenuDialog extends ComponentDialog {
             this::showMenuStep,
             this::handleMenuSelection
         };
-        ChoicePrompt choicePrompt = new ChoicePrompt(MENU_PROMPT);
+        ChoicePrompt choicePrompt = new ChoicePrompt(CentralizedConstants.MENU_PROMPT);
         // Exact match zorunluluğunu kaldır
         choicePrompt.setStyle(ListStyle.SUGGESTED_ACTION);
         // WaterfallDialog'u ekle
-        addDialog(new WaterfallDialog(WATERFALL_DIALOG, Arrays.asList(waterfallSteps)));
+        addDialog(new WaterfallDialog(CentralizedConstants.MENU_WATERFALL_DIALOG, Arrays.asList(waterfallSteps)));
         addDialog(choicePrompt);
-        setInitialDialogId(WATERFALL_DIALOG);
+        setInitialDialogId(CentralizedConstants.MENU_WATERFALL_DIALOG);
     }
 
     private CompletableFuture<DialogTurnResult> showMenuStep(WaterfallStepContext stepContext) {
         System.out.println("ShowMenuStep - Başladı");
-
-        // Menüyü gösterelim
-        List<Choice> choices = Arrays.stream(MenuOption.values())
-                .map(option -> new Choice(option.getDisplayText()))
-                .collect(Collectors.toList());
-
-        List<CardAction> cardActions = choices.stream()
-                .map(choice -> new CardAction() {{
-                    setType(ActionTypes.POST_BACK); // POST_BACK kullanarak yanıt gönder
-                    setTitle(choice.getValue());
-                    setValue(choice.getValue());
-
-                    // Kullanıcıdan gelen yanıt burada kullanılacak
-                }})
-                .collect(Collectors.toList());
-
-        // Prompt Activity oluştur
-        Activity promptActivity = MessageFactory.text("Lütfen bir işlem seçin:");
-        promptActivity.setSuggestedActions(new SuggestedActions() {{
-            setActions(cardActions);
-        }});
-
-        // Prompt ayarları
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(promptActivity);
-        promptOptions.setChoices(choices);
-        return stepContext.prompt(MENU_PROMPT, promptOptions)
-                .thenApply(result -> {
-                    System.out.println("🟢 Kullanıcı bir seçim yaptı:");
-                    // Burada sonucu görebilirsin
-                    return result;
-                });
+        return DialogUtils.showDynamicMenu(stepContext,"Lütfen bir işlem seciniz", MenuOption.class,CentralizedConstants.MENU_PROMPT,ListStyle.SUGGESTED_ACTION);
     }
 
 
 
     private CompletableFuture<DialogTurnResult> handleMenuSelection(WaterfallStepContext stepContext) {
-        System.out.println("🟢 handleMenuSelection ÇALIŞTI! Kullanıcının seçimi alındı.");
-        Object result = stepContext.getResult();
-        if (!(result instanceof FoundChoice)) {
-            System.out.println("⚠️ Hata! Kullanıcıdan gelen yanıt `FoundChoice` değil!");
-            return stepContext.endDialog();
-        }
+//        System.out.println("🟢 handleMenuSelection ÇALIŞTI! Kullanıcının seçimi alındı.");
+//        Object result = stepContext.getResult();
+//
+//        FoundChoice choice = (FoundChoice) result;
+//        String selectedOption = choice.getValue();
+//        System.out.println("🟢 Kullanıcının seçimi: " + selectedOption);
+//
+//        MenuOption menuOption = MenuOption.fromDisplayText(selectedOption);
+//        return stepContext.replaceDialog(menuOption.getDialogId());
+        return DialogUtils.handleSelection
+                (stepContext, MenuOption.class, "Lütfen bir işlem seciniz", CentralizedConstants.MENU_WATERFALL_DIALOG);
 
-        FoundChoice choice = (FoundChoice) result;
-        String selectedOption = choice.getValue();
-        System.out.println("🟢 Kullanıcının seçimi: " + selectedOption);
-
-        MenuOption menuOption = MenuOption.fromDisplayText(selectedOption);
-        return stepContext.replaceDialog(menuOption.getDialogId());
     }
 
 

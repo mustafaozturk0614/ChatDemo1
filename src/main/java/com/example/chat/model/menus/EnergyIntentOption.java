@@ -27,7 +27,14 @@ public enum EnergyIntentOption implements IntentMenuOption {
     }
 
     @Override
+    public String getDialogId() {
+        return "";
+    }
+
+    @Override
     public DialogType getDialogType() {
         return dialogType;
     }
+
+
 } 

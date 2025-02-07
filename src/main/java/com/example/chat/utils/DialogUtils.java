@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.example.chat.model.menus.DialogMenuOption;
 import com.example.chat.model.menus.MenuOptionInterface;
 import com.microsoft.bot.builder.ConversationState;
 import com.microsoft.bot.builder.MessageFactory;
@@ -50,9 +51,8 @@ public class DialogUtils {
     public static <T extends Enum<T> & MenuOptionInterface>  CompletableFuture<DialogTurnResult> processSelectionStep(WaterfallStepContext stepContext, Class<T> enumClass) {
         FoundChoice choice = (FoundChoice) stepContext.getResult();
         T selectedOption = MenuMatcher.fromDisplayText(choice.getValue(), enumClass);
-        return stepContext.getContext().sendActivity(
-                MessageFactory.text(selectedOption.toString())
-        ).thenCompose(res -> stepContext.endDialog(selectedOption));
+        CompletableFuture<DialogTurnResult> dialogTurnResultCompletableFuture = stepContext.getParent() != null ? stepContext.getParent().endDialog(selectedOption) : null;
+        return stepContext.endDialog(selectedOption);
     }
 
     public static CompletableFuture<DialogTurnResult> showChoicePrompt(
@@ -149,22 +149,22 @@ public class DialogUtils {
             WaterfallStepContext stepContext,
             Class<T> enumClass,
             String successMessage,
-
             String errorDialogId) {
-        
         try {
             FoundChoice choice = (FoundChoice) stepContext.getResult();
             T selected = findEnumValue(enumClass, choice.getValue());
             
-            return stepContext.getContext().sendActivity(MessageFactory.text(successMessage))
-                    .thenCompose(res -> stepContext.next(selected));
+            if (selected instanceof DialogMenuOption) {
+                // Eğer seçim bir dialog başlatacaksa
+                return stepContext.beginDialog(((DialogMenuOption) selected).getDialogId());
+            } else {
+                // Normal seçim işlemi
+                return stepContext.next(selected);
+            }
         } catch (Exception ex) {
             logger.error("Seçim işleme hatası: {}", ex.getMessage());
-            return sendErrorMessageAndReturn(
-                    stepContext,
-                    "Geçersiz seçim: " + ex.getMessage(),
-                    errorDialogId
-            ).toCompletableFuture();
+            return sendErrorMessageAndReturn(stepContext, "Geçersiz seçim", errorDialogId)
+                .toCompletableFuture();
         }
     }
 
@@ -226,7 +226,6 @@ public class DialogUtils {
             DialogContext dialogContext,
             String message,
             String returnDialogId) {
-
         return dialogContext.getContext().sendActivity(MessageFactory.text(message))
             .thenCompose(res -> dialogContext.replaceDialog(returnDialogId))
             .exceptionally(ex -> {

@@ -75,20 +75,26 @@ public class EchoBot extends ActivityHandler {
         this.conversationState = conversationState;
         this.userState = userState;
 
-
         StatePropertyAccessor<DialogState> dialogStateAccessor =
                 conversationState.createProperty("DialogState");
 
         dialogs = new DialogSet(dialogStateAccessor);
 
-        // Dialogları ekle
-        dialogs.add(new MenuDialog(MENU_DIALOG_ID));
-        dialogs.add(new TalepDialog(TALEP_DIALOG_ID));
-        dialogs.add(new FaturaDialog(FATURA_DIALOG_ID));
+        // 1. Önce bağımsız dialogları ekle
         dialogs.add(new FaturaSorgulamaDialog(FATURA_SORGULAMA_DIALOG_ID));
         dialogs.add(new EnergyDialog(ENERGY_DIALOG_ID));
         dialogs.add(new SupportDialog(SUPPORT_DIALOG_ID));
+        dialogs.add(new TalepDialog(TALEP_DIALOG_ID));
 
+        // 2. Sonra bağımlı dialogları ekle
+        dialogs.add(new FaturaDialog(FATURA_DIALOG_ID));
+
+        // 3. En son ana menü dialogunu ekle
+        dialogs.add(new MenuDialog(MENU_DIALOG_ID));
+
+        // Log ekleyelim
+        logger.info("Dialoglar başarıyla yüklendi");
+        logger.info("Toplam dialog sayısı: " + dialogs.getDialogs().size());
     }
 
 
@@ -135,7 +141,7 @@ public class EchoBot extends ActivityHandler {
                 }
 
                 return  DialogUtils.saveContext(lastResult, userState, conversationState, turnContext) ;
-            }   System.out.println(dialogContext.getActiveDialog().getId());
+            }
             return DialogUtils.saveContext(CompletableFuture.completedFuture(null), userState, conversationState, turnContext);
 
         }));

@@ -1,15 +1,24 @@
 package com.example.chat.utils;
 
-import com.example.chat.model.menus.*;
-import com.microsoft.bot.dialogs.DialogContext;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import com.example.chat.constants.CentralizedConstants;
+import com.example.chat.model.menus.EnergyIntentOption;
+import com.example.chat.model.menus.FaturaOption;
+import com.example.chat.model.menus.FaturaSorgulamaOption;
+import com.example.chat.model.menus.IntentMenuOption;
+import com.example.chat.model.menus.MenuOption;
+import com.example.chat.model.menus.MenuOptionInterface;
+import com.example.chat.model.menus.SupportOption;
+import com.example.chat.model.menus.TalepTipi;
+import com.microsoft.bot.dialogs.DialogContext;
+
 public class MenuMatcher {
     private static final Map<String, Map<String, MenuOptionInterface>> DIALOG_OPTIONS = new HashMap<>();
+    private static final Map<String, String> PROMPTMAP = new HashMap<>();
 
     static {
         // Her diyalog için menü seçeneklerini yükle
@@ -19,6 +28,13 @@ public class MenuMatcher {
         loadDialogOptions("energyDialog", EnergyIntentOption.values());
         loadDialogOptions("supportDialog", SupportOption.values());
         loadDialogOptions("talepDialog", TalepTipi.values());
+
+        PROMPTMAP.put(CentralizedConstants.MENU_DIALOG_ID,CentralizedConstants.MENU_PROMPT);
+        PROMPTMAP.put(CentralizedConstants.SUPPORT_DIALOG_ID,CentralizedConstants.SUPPORT_PROMPT);
+        PROMPTMAP.put(CentralizedConstants.TALEP_DIALOG_ID,CentralizedConstants.TALEP_PROMPT);
+        PROMPTMAP.put(CentralizedConstants.FATURA_DIALOG_ID,CentralizedConstants.FATURA_PROMPT);
+        PROMPTMAP.put(CentralizedConstants.FATURA_SORGULAMA_DIALOG_ID,CentralizedConstants.FATURA_SORGULAMA_PROMPT);
+        PROMPTMAP.put(CentralizedConstants.ENERGY_DIALOG_ID,CentralizedConstants.ENERGY_PROMPT);
     }
 
     private static void loadDialogOptions(String dialogId, MenuOptionInterface[] options) {
@@ -53,6 +69,11 @@ String currentDialogId = context.getActiveDialog()==null?"menuDialog":context.ge
         }
 
         return null;
+    }
+
+    public  static String  getPrompts(String dialogId){
+        return PROMPTMAP.get(dialogId);
+
     }
 
     private static String cleanText(String text) {

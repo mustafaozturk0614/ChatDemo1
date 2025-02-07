@@ -1,7 +1,9 @@
 package com.example.chat.model.menus;
 
+import com.example.chat.constants.CentralizedConstants;
+
 public enum FaturaOption implements  DialogMenuOption {
-    FATURA_SORGULA("Fatura Sorgula","faturaSorgulamaDialog",DialogType.MENU_DIALOG),
+    FATURA_SORGULA("Fatura Sorgula", CentralizedConstants.FATURA_SORGULAMA_DIALOG_ID,DialogType.MENU_DIALOG),
     FATURA_ODE("Fatura Öde","faturaOdemeDialog",DialogType.MENU_DIALOG),
     GERI("Ana Menü","menuDialog",DialogType.MENU_DIALOG);
 

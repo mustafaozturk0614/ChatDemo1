@@ -1,18 +1,19 @@
 package com.example.chat.dialogs;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import com.example.chat.constants.CentralizedConstants;
 import com.example.chat.model.menus.FaturaOption;
-import com.example.chat.model.menus.MenuOption;
 import com.example.chat.utils.DialogUtils;
 import com.example.chat.utils.MenuMatcher;
 import com.microsoft.bot.builder.MessageFactory;
-import com.microsoft.bot.dialogs.*;
+import com.microsoft.bot.dialogs.ComponentDialog;
+import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.WaterfallDialog;
+import com.microsoft.bot.dialogs.WaterfallStep;
+import com.microsoft.bot.dialogs.WaterfallStepContext;
 import com.microsoft.bot.dialogs.choices.Choice;
 import com.microsoft.bot.dialogs.choices.FoundChoice;
 import com.microsoft.bot.dialogs.choices.ListStyle;
@@ -45,14 +46,11 @@ public class FaturaDialog extends ComponentDialog {
 
     private CompletableFuture<DialogTurnResult> handleFaturaSelectionStep(WaterfallStepContext stepContext) {
         FoundChoice choice = (FoundChoice) stepContext.getResult();
-        FaturaOption selected = MenuMatcher.fromDisplayText(choice.getValue(),FaturaOption.class) ;
+        FaturaOption selected = MenuMatcher.fromDisplayText(choice.getValue(), FaturaOption.class);
+
         switch(selected) {
             case FATURA_SORGULA:
-                return DialogUtils.sendMessageAndReturn(
-                        stepContext,
-                        "Fatura sorgulama başlatılıyor...",
-                        CentralizedConstants.FATURA_SORGULAMA_DIALOG_ID
-                );
+                return stepContext.replaceDialog(selected.getDialogId());
 
             case FATURA_ODE:
                 return getFaturaDetayAsync()
@@ -72,8 +70,6 @@ public class FaturaDialog extends ComponentDialog {
                         CentralizedConstants.MENU_DIALOG_ID
                 );
         }
-
-
     }
 
     private CompletableFuture<DialogTurnResult> processFaturaOdeme(WaterfallStepContext stepContext) {
@@ -120,4 +116,5 @@ public class FaturaDialog extends ComponentDialog {
             return stepContext.getContext().sendActivity(MessageFactory.text("Fatura odemesi iptal edildi"))
                     .thenCompose(result -> stepContext.endDialog());
         }
-}}
+    }
+}

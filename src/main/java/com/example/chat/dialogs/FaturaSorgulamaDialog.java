@@ -1,31 +1,19 @@
 package com.example.chat.dialogs;
 
-import com.example.chat.constants.CentralizedConstants;
-import com.example.chat.entity.Bill;
-import com.example.chat.model.menus.EnergyIntentOption;
-import com.example.chat.model.menus.FaturaSorgulamaOption;
-import com.example.chat.service.IntentService;
-import com.example.chat.utils.DialogUtils;
-import com.microsoft.bot.dialogs.*;
-import com.microsoft.bot.dialogs.choices.ListStyle;
-import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
-import com.microsoft.bot.dialogs.prompts.PromptOptions;
-import com.microsoft.bot.builder.MessageFactory;
-import com.microsoft.bot.dialogs.choices.Choice;
-import com.microsoft.bot.dialogs.choices.FoundChoice;
-import com.microsoft.bot.schema.ActionTypes;
-import com.microsoft.bot.schema.Activity;
-import com.microsoft.bot.schema.CardAction;
-import com.microsoft.bot.schema.SuggestedActions;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import static com.example.chat.constants.CentralizedConstants.FATURA_SORGULAMA_PROMPT;
+import static com.example.chat.constants.CentralizedConstants.FATURA_SORGULAMA_WATERFALL_DIALOG;
+import com.example.chat.model.menus.FaturaSorgulamaOption;
+import com.example.chat.utils.DialogUtils;
+import com.microsoft.bot.dialogs.ComponentDialog;
+import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.WaterfallDialog;
+import com.microsoft.bot.dialogs.WaterfallStep;
+import com.microsoft.bot.dialogs.WaterfallStepContext;
+import com.microsoft.bot.dialogs.choices.ListStyle;
+import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
 
 public class FaturaSorgulamaDialog extends ComponentDialog {
 
@@ -40,14 +28,16 @@ public class FaturaSorgulamaDialog extends ComponentDialog {
         };
 
         // WaterfallDialog'u ekle
-        addDialog(new WaterfallDialog(dialogId, Arrays.asList(waterfallSteps)));
+        addDialog(new WaterfallDialog(FATURA_SORGULAMA_WATERFALL_DIALOG, Arrays.asList(waterfallSteps)));
         addDialog(new ChoicePrompt(FATURA_SORGULAMA_PROMPT));
-        setInitialDialogId(dialogId);
+        setInitialDialogId(FATURA_SORGULAMA_WATERFALL_DIALOG);
     }
 
     private CompletableFuture<DialogTurnResult> handleFaturaSorgulamaStep(WaterfallStepContext stepContext) {
-
-        return   DialogUtils.showDynamicMenu(stepContext, "Enerji yönetimi menüsüne hoş geldiniz. Lütfen bir seçenek belirleyin.", FaturaSorgulamaOption.class, CentralizedConstants.FATURA_PROMPT, ListStyle.SUGGESTED_ACTION);
+        if (stepContext.getContext().getTurnState().get("DialogState") != null) {
+            System.out.println("Active Dialog ID: " + stepContext.getParent().getActiveDialog().getId());
+        }
+        return   DialogUtils.showDynamicMenu(stepContext, "Fatura Sorgulam Ekranın Hoşgeldiniz !!", FaturaSorgulamaOption.class, FATURA_SORGULAMA_PROMPT, ListStyle.SUGGESTED_ACTION);
 
 }
 

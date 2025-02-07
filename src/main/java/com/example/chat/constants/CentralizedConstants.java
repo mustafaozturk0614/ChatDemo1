@@ -17,12 +17,17 @@ public class CentralizedConstants {
     public static final String FATURA_PROMPT = "faturaPrompt";
     public static final String FATURA_SORGULAMA_PROMPT = "faturaSorgulamaPrompt";
   public static final String ENERGY_PROMPT = "energyPromt";
+  public static final String SUPPORT_PROMPT = "supportPromt";
     // Waterfall Dialog Constants
     public static final String MENU_WATERFALL_DIALOG = "menuWaterFall";
     public static final String FATURA_WATERFALL_DIALOG = "faturaWaterfall";
+    public static final String FATURA_SORGULAMA_WATERFALL_DIALOG = "faturaSorgulamaWaterfall";
     public static final String ENERGY_WATERFALL_DIALOG ="energyWaterfall";
+    public static final String SUPPORT_WATERFALL_DIALOG ="supportWaterfall";
     // General Constants
     public static final String DEFAULT_USER = "Değerli Müşterimiz";
+     //
+     
 
     ;
 }

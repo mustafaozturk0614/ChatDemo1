@@ -47,7 +47,7 @@ public class TalepDialog extends ComponentDialog {
     }
 
     private CompletableFuture<DialogTurnResult> showTalepTipiStep(WaterfallStepContext stepContext) {
-        return DialogUtils.showDynamicMenu(stepContext,"Lütfen bir işlem seciniz", TalepTipi.class,CentralizedConstants.TALEP_PROMPT, ListStyle.SUGGESTED_ACTION);
+        return DialogUtils.showDynamicMenu(stepContext,"Talep ve Şikayetlerinizi Seçiniz.", TalepTipi.class,CentralizedConstants.TALEP_PROMPT, ListStyle.SUGGESTED_ACTION);
     }
 
     private CompletableFuture<DialogTurnResult> handleTalepTipiStep(WaterfallStepContext stepContext) {

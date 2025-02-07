@@ -1,23 +1,29 @@
 package com.example.chat.dialogs;
 
-import com.example.chat.model.menus.TalepTipi;
-import com.microsoft.bot.dialogs.*;
-import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
-import com.microsoft.bot.dialogs.prompts.PromptOptions;
-import com.microsoft.bot.builder.MessageFactory;
-import com.microsoft.bot.dialogs.choices.Choice;
-import com.microsoft.bot.dialogs.choices.FoundChoice;
-import com.microsoft.bot.dialogs.prompts.TextPrompt;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import com.example.chat.constants.CentralizedConstants;
+import com.example.chat.model.menus.FaturaOption;
+import com.example.chat.model.menus.TalepTipi;
+import com.example.chat.utils.DialogUtils;
+import com.example.chat.utils.MenuMatcher;
+import com.microsoft.bot.builder.MessageFactory;
+import com.microsoft.bot.dialogs.ComponentDialog;
+import com.microsoft.bot.dialogs.DialogTurnResult;
+import com.microsoft.bot.dialogs.WaterfallDialog;
+import com.microsoft.bot.dialogs.WaterfallStep;
+import com.microsoft.bot.dialogs.WaterfallStepContext;
+import com.microsoft.bot.dialogs.choices.Choice;
+import com.microsoft.bot.dialogs.choices.FoundChoice;
+import com.microsoft.bot.dialogs.choices.ListStyle;
+import com.microsoft.bot.dialogs.prompts.ChoicePrompt;
+import com.microsoft.bot.dialogs.prompts.PromptOptions;
+import com.microsoft.bot.dialogs.prompts.TextPrompt;
+
 public class TalepDialog extends ComponentDialog {
-    private static final String TALIP_PROMPT = "talepPrompt";
-    private static final String DETAIL_PROMPT = "detayPrompt";
-    private static final String CONFIRM_PROMPT = "confirmPrompt";
 
     public TalepDialog(String dialogId) {
         super(dialogId);
@@ -34,27 +40,19 @@ public class TalepDialog extends ComponentDialog {
 
         // WaterfallDialog'u ekle
         addDialog(new WaterfallDialog(dialogId, Arrays.asList(waterfallSteps)));
-        addDialog(new ChoicePrompt(TALIP_PROMPT));
-        addDialog(new TextPrompt(DETAIL_PROMPT));
-        addDialog(new ChoicePrompt(CONFIRM_PROMPT)); // Confirm prompt'u ekle
+        addDialog(new ChoicePrompt(CentralizedConstants.TALEP_PROMPT));
+        addDialog(new TextPrompt(CentralizedConstants.DETAIL_PROMPT));
+        addDialog(new ChoicePrompt(CentralizedConstants.CONFIRM_PROMPT)); // Confirm prompt'u ekle
         setInitialDialogId(dialogId);
     }
 
     private CompletableFuture<DialogTurnResult> showTalepTipiStep(WaterfallStepContext stepContext) {
-        List<Choice> choices = Arrays.stream(TalepTipi.values())
-            .map(option -> new Choice(option.getDisplayText()))
-            .collect(Collectors.toList());
-
-        PromptOptions promptOptions = new PromptOptions();
-        promptOptions.setPrompt(MessageFactory.text("Lütfen talep tipini seçin:"));
-        promptOptions.setChoices(choices);
-
-        return stepContext.prompt(TALIP_PROMPT, promptOptions);
+        return DialogUtils.showDynamicMenu(stepContext,"Lütfen bir işlem seciniz", TalepTipi.class,CentralizedConstants.TALEP_PROMPT, ListStyle.SUGGESTED_ACTION);
     }
 
     private CompletableFuture<DialogTurnResult> handleTalepTipiStep(WaterfallStepContext stepContext) {
         String selectedOption = ((FoundChoice) stepContext.getResult()).getValue();
-        TalepTipi talepOption = TalepTipi.fromDisplayText(selectedOption);
+        TalepTipi talepOption = MenuMatcher.fromDisplayText(selectedOption, TalepTipi.class);
         stepContext.getValues().put("talepTipi", talepOption);
         return stepContext.next(null);
     }
@@ -62,7 +60,7 @@ public class TalepDialog extends ComponentDialog {
     private CompletableFuture<DialogTurnResult> getTalepDetayStep(WaterfallStepContext stepContext) {
         PromptOptions promptOptions = new PromptOptions();
         promptOptions.setPrompt(MessageFactory.text("Lütfen talep detayını girin:"));
-        return stepContext.prompt(DETAIL_PROMPT, promptOptions);
+        return stepContext.prompt(CentralizedConstants.DETAIL_PROMPT, promptOptions);
     }
 
     private CompletableFuture<DialogTurnResult> handleTalepDetayStep(WaterfallStepContext stepContext) {
@@ -82,7 +80,7 @@ public class TalepDialog extends ComponentDialog {
         promptOptions.setPrompt(MessageFactory.text("Talep türü: " + talepTipi.getDisplayText() + "\nDetay: " + talepDetay + "\nOnaylıyor musunuz?"));
         promptOptions.setChoices(choices); // Seçenekleri ekle
 
-        return stepContext.prompt(CONFIRM_PROMPT, promptOptions);
+        return stepContext.prompt(CentralizedConstants.CONFIRM_PROMPT, promptOptions);
     }
 
     private CompletableFuture<DialogTurnResult> processTalepStep(WaterfallStepContext stepContext) {

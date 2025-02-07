@@ -20,14 +20,7 @@ public enum BillingOption  implements DialogMenuOption{
         return null;
     }
 
-    public static BillingOption fromDisplayText(String text) {
-        for (BillingOption option : values()) {
-            if (option.getDisplayText().equals(text)) {
-                return option;
-            }
-        }
-        throw new IllegalArgumentException("Invalid display text: " + text);
-    }
+
 
     @Override
     public String getDialogId() {

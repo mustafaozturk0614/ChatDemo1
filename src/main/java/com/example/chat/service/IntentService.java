@@ -6,10 +6,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
+import com.microsoft.bot.builder.MessageFactory;
+import com.microsoft.bot.dialogs.DialogContext;
+import com.microsoft.bot.dialogs.DialogTurnResult;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +31,26 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import static com.example.chat.EchoBot.MENU_DIALOG_ID;
+
 @Service
 @RequiredArgsConstructor
 public class IntentService {
     private static final Logger logger = LoggerFactory.getLogger(IntentService.class);
 
+
+    @Autowired
+    private BillService billService;
+    @Autowired
+    private PaymentService paymentService;
+    @Autowired
+    private SubscriptionService subscriptionService;
+    @Autowired
+    private EnergyConsumptionService energyConsumptionService;
+    @Autowired
+    private SupportRequestService supportRequestService;
+    @Autowired
+    private  EnergySavingTipService energySavingTipService;
     @Value("${azure.luis.subscription-key}")
     private String subscriptionKey;
 
@@ -234,6 +254,19 @@ public class IntentService {
             System.err.println("Çeviri hatası: " + e.getMessage());
             return text; // Hata durumunda orijinal metni döndür
         }
+    }
+
+    public CompletableFuture<DialogTurnResult> processIntent(DialogContext dialogContext, String intent) {
+        return switch (intent) {
+            case "LastUnpaidBillIntent" -> billService.handleLastUnpaidBill(1L, dialogContext);
+            case "AllUnpaidBillsIntent" -> billService.handleAllUnpaidBills(1L, dialogContext);
+            case "PaidBillsIntent" -> paymentService.handlePaidBills(1L, dialogContext);
+            case "EnergySavingTipsIntent" -> energySavingTipService.showEnergySavingTips(dialogContext);
+            case "ConsumptionAnalysisIntent" -> energyConsumptionService.handleConsumptionAnalysis(1L, dialogContext);
+            case "SupportRequestIntent" -> supportRequestService.handleSupportRequest(1L, dialogContext);
+            default -> dialogContext.getContext().sendActivity(MessageFactory.text("Bu isteği anlayamadım. Ana menüye yönlendiriliyorsunuz."))
+                    .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+        };
     }
 }
         

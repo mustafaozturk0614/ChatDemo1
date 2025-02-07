@@ -3,6 +3,7 @@ package com.example.chat.service;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import com.example.chat.utils.DialogUtils;
 import com.microsoft.bot.builder.MessageFactory;
 import com.microsoft.bot.dialogs.DialogContext;
 import com.microsoft.bot.dialogs.DialogTurnResult;
@@ -49,8 +50,7 @@ public class PaymentService {
                     } else {
                         response.append("Ödenmiş faturanız bulunmamaktadır.");
                     }
-                    return dialogContext.getContext().sendActivity(MessageFactory.text(response.toString()))
-                            .thenCompose(result -> dialogContext.replaceDialog(MENU_DIALOG_ID));
+                    return DialogUtils.sendMessageAndReturn(dialogContext, response.toString(), MENU_DIALOG_ID);
                 });
     }
 } 

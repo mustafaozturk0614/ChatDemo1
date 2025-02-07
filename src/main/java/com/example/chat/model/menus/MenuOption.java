@@ -1,10 +1,12 @@
 package com.example.chat.model.menus;
 
+import com.example.chat.constants.CentralizedConstants;
+
 public enum MenuOption implements DialogMenuOption {
-    FATURA_ISLEMLERI("Fatura İşlemleri 💰", "faturaDialog", DialogType.MENU_DIALOG),
-    ENERJI_YONETIMI("Enerji Yönetimi ⚡", "energyDialog", DialogType.MENU_DIALOG),
-    TALEP_SIKAYET("Talep/Şikayet 📨", "talepDialog", DialogType.MENU_DIALOG),
-    DESTEK("Destek 🤝", "supportDialog", DialogType.MENU_DIALOG);
+    FATURA_ISLEMLERI("Fatura İşlemleri 💰", CentralizedConstants.FATURA_DIALOG_ID, DialogType.MENU_DIALOG),
+    ENERJI_YONETIMI("Enerji Yönetimi ⚡", CentralizedConstants.ENERGY_DIALOG_ID, DialogType.MENU_DIALOG),
+    TALEP_SIKAYET("Talep/Şikayet 📨", CentralizedConstants.TALEP_DIALOG_ID, DialogType.MENU_DIALOG),
+    DESTEK("Destek 🤝", CentralizedConstants.SUPPORT_DIALOG_ID, DialogType.MENU_DIALOG);
 
     private final String displayText;
     private final String dialogId;
@@ -30,12 +32,5 @@ public enum MenuOption implements DialogMenuOption {
     public DialogType getDialogType() {
         return dialogType;
     }
-    public static MenuOption fromDisplayText(String displayText) {
-        for (MenuOption menuOption : MenuOption.values()) {
-            if (menuOption.getDisplayText().equalsIgnoreCase(displayText)) {
-                return menuOption;
-            }
-        }
-        throw new IllegalArgumentException("Geçersiz menü seçeneği: " + displayText);
-    }
+
 } 

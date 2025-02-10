@@ -17,6 +17,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Set up PostgreSQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          sudo service postgresql start      
 
       - name: Set up Java version
         uses: actions/setup-java@v4

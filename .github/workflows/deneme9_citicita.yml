@@ -22,7 +22,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql
-          sudo service postgresql start      
+          sudo service postgresql start  
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD '${{ secrets.POSTGRES_PASSWORD }}';"
 
       - name: Set up Java version
         uses: actions/setup-java@v4

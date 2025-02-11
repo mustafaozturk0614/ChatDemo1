@@ -6,6 +6,10 @@ on:
       - deneme9
   workflow_dispatch:
 
+env:
+  DB_USERNAME: postgres
+  DB_PASSWORD: root
+  DB_NAME: chatbotdb2
 
 jobs:
   build:
@@ -21,8 +25,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql
           sudo service postgresql start  
-          sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
-          sudo -u postgres psql -c "ALTER USER $DB_USERNAME PASSWORD '$DB_PASSWORD';"
+          sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME};"
+          sudo -u postgres psql -c "ALTER USER ${DB_USERNAME} PASSWORD '${DB_PASSWORD}';"
 
       - name: Set up Java version
         uses: actions/setup-java@v4
@@ -48,7 +52,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-  
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4

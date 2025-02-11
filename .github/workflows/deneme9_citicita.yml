@@ -10,7 +10,7 @@ env:
   DB_USERNAME: postgres
   DB_PASSWORD: root
   DB_NAME: chatbotdb2
-  DB_URL: "jdbc:postgresql://chatbotdb2.postgres.database.azure.com:5432/chatbotdb2?sslmode=require"
+  DB_URL: "jdbc:postgresql://localhost:5432/chatbotdb2?sslmode=require"
 
 jobs:
   build:

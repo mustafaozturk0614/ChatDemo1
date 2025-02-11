@@ -1,13 +1,6 @@
 name: Build and deploy JAR app to Azure Web App - citicita
 
-on:
-  push:
-    branches:
-      - deneme9
-  workflow_dispatch:
-
-name: Build and deploy JAR app to Azure Web App - citicita
-
+  
 on:
   push:
     branches:

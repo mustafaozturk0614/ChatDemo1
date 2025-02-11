@@ -29,7 +29,7 @@ jobs:
           sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME};"
           sudo -u postgres psql -c "ALTER USER ${DB_USERNAME} PASSWORD '${DB_PASSWORD}';"
           sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USERNAME};"
-          psql -h chatbotdb2.postgres.database.azure.com -U ${DB_USERNAME} -d ${DB_NAME} -c "SELECT 1" || exit 1
+          psql -h localhost -U ${DB_USERNAME} -d ${DB_NAME} -c "SELECT 1" || exit 1
 
       - name: Set up Java version
         uses: actions/setup-java@v4
